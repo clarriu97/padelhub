@@ -1,0 +1,64 @@
+{
+  // Configuración de Flutter/Dart
+  "dart.flutterSdkPath": null,
+  "dart.lineLength": 80,
+  "dart.debugExternalPackageLibraries": false,
+  "dart.debugSdkLibraries": false,
+  
+  // Formato automático
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.rulers": [80],
+    "editor.selectionHighlight": false,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+  
+  // Archivos a excluir de la búsqueda
+  "files.exclude": {
+    "**/.dart_tool": true,
+    "**/.flutter-plugins": true,
+    "**/.flutter-plugins-dependencies": true,
+    "**/.packages": true,
+    "**/build": true
+  },
+  
+  // Archivos a vigilar
+  "files.watcherExclude": {
+    "**/.dart_tool/**": true,
+    "**/.flutter-plugins": true,
+    "**/.flutter-plugins-dependencies": true,
+    "**/.packages": true,
+    "**/build/**": true,
+    "**/ios/Pods/**": true,
+    "**/android/.gradle/**": true
+  },
+  
+  // Búsqueda
+  "search.exclude": {
+    "**/.dart_tool": true,
+    "**/build": true,
+    "**/ios/Pods": true,
+    "**/android/.gradle": true,
+    "**/.vscode": false
+  },
+  
+  // Git
+  "git.ignoreLimitWarning": true,
+  
+  // Seguridad: Advertencias para archivos sensibles
+  "files.associations": {
+    "google-services.json": "jsonc",
+    "GoogleService-Info.plist": "xml",
+    "firebase_options.dart": "dart"
+  },
+  
+  // Snippets recomendados
+  "editor.snippetSuggestions": "top",
+  
+  // Tests
+  "dart.testInvocations": "Codelens"
+}
