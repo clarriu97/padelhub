@@ -39,7 +39,7 @@ class _SignupScreenState extends State<SignupScreen> {
       // Navigation will be handled by the auth state listener
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred';
-      
+
       switch (e.code) {
         case 'email-already-in-use':
           message = 'This email is already registered';
@@ -132,7 +132,10 @@ class _SignupScreenState extends State<SignupScreen> {
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined, color: AppColors.secondary),
+                      prefixIcon: Icon(
+                        Icons.email_outlined,
+                        color: AppColors.secondary,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
@@ -163,10 +166,15 @@ class _SignupScreenState extends State<SignupScreen> {
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outlined, color: AppColors.secondary),
+                      prefixIcon: Icon(
+                        Icons.lock_outlined,
+                        color: AppColors.secondary,
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
                           color: AppColors.textSecondary,
                         ),
                         onPressed: () {
@@ -204,14 +212,22 @@ class _SignupScreenState extends State<SignupScreen> {
                     onFieldSubmitted: (_) => _signup(),
                     decoration: InputDecoration(
                       labelText: 'Confirm Password',
-                      prefixIcon: Icon(Icons.lock_outlined, color: AppColors.secondary),
+                      prefixIcon: Icon(
+                        Icons.lock_outlined,
+                        color: AppColors.secondary,
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          _obscureConfirmPassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
                           color: AppColors.textSecondary,
                         ),
                         onPressed: () {
-                          setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                          setState(
+                            () => _obscureConfirmPassword =
+                                !_obscureConfirmPassword,
+                          );
                         },
                       ),
                       border: OutlineInputBorder(

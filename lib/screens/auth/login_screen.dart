@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
       // Navigation will be handled by the auth state listener
     } on FirebaseAuthException catch (e) {
       String message = 'An error occurred';
-      
+
       switch (e.code) {
         case 'user-not-found':
           message = 'No user found with this email';
@@ -89,11 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Logo or App Name
-                  Icon(
-                    Icons.sports_tennis,
-                    size: 80,
-                    color: AppColors.primary,
-                  ),
+                  Icon(Icons.sports_tennis, size: 80, color: AppColors.primary),
                   const SizedBox(height: 16),
                   Text(
                     'PadelHub',
@@ -122,7 +118,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined, color: AppColors.primary),
+                      prefixIcon: Icon(
+                        Icons.email_outlined,
+                        color: AppColors.primary,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
@@ -154,10 +153,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     onFieldSubmitted: (_) => _login(),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outlined, color: AppColors.primary),
+                      prefixIcon: Icon(
+                        Icons.lock_outlined,
+                        color: AppColors.primary,
+                      ),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
                           color: AppColors.textSecondary,
                         ),
                         onPressed: () {

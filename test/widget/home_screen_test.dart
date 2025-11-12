@@ -4,8 +4,9 @@ import 'package:padelhub/colors.dart';
 
 void main() {
   group('HomeScreen Widget Tests', () {
-    testWidgets('should verify AppColors are properly defined',
-        (WidgetTester tester) async {
+    testWidgets('should verify AppColors are properly defined', (
+      WidgetTester tester,
+    ) async {
       // Test that colors are defined
       expect(AppColors.primary, isNotNull);
       expect(AppColors.secondary, isNotNull);
@@ -13,8 +14,9 @@ void main() {
       expect(AppColors.background, isNotNull);
     });
 
-    testWidgets('should verify color values match design',
-        (WidgetTester tester) async {
+    testWidgets('should verify color values match design', (
+      WidgetTester tester,
+    ) async {
       // Verify specific color values
       expect(AppColors.turquoise, const Color(0xFF00C5C8));
       expect(AppColors.limeGreen, const Color(0xFF7DFF00));
@@ -24,4 +26,3 @@ void main() {
     });
   });
 }
-

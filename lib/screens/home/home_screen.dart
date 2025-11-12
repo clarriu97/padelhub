@@ -30,11 +30,7 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.sports_tennis,
-                size: 100,
-                color: AppColors.primary,
-              ),
+              Icon(Icons.sports_tennis, size: 100, color: AppColors.primary),
               const SizedBox(height: 24),
               Text(
                 'Welcome to PadelHub!',
@@ -48,10 +44,7 @@ class HomeScreen extends StatelessWidget {
               const SizedBox(height: 16),
               Text(
                 'Logged in as:',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
               Container(

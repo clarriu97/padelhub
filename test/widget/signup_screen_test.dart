@@ -5,11 +5,7 @@ import 'package:padelhub/screens/auth/signup_screen.dart';
 void main() {
   group('SignupScreen Widget Tests', () {
     testWidgets('should display all UI elements', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignupScreen(),
-        ),
-      );
+      await tester.pumpWidget(const MaterialApp(home: SignupScreen()));
 
       // Check if all main elements are present
       expect(find.text('Create Account'), findsOneWidget);
@@ -20,7 +16,7 @@ void main() {
       expect(find.text('Sign Up'), findsAtLeastNWidgets(1));
       expect(find.text('Already have an account? '), findsOneWidget);
       expect(find.text('Log In'), findsOneWidget);
-      
+
       // Check for icons
       expect(find.byIcon(Icons.sports_tennis), findsOneWidget);
       expect(find.byIcon(Icons.email_outlined), findsOneWidget);
@@ -28,13 +24,10 @@ void main() {
       expect(find.byIcon(Icons.arrow_back_ios), findsOneWidget);
     });
 
-    testWidgets('should show validation error for empty email',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignupScreen(),
-        ),
-      );
+    testWidgets('should show validation error for empty email', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignupScreen()));
 
       // Tap sign up button without entering data
       final signUpButton = find.widgetWithText(ElevatedButton, 'Sign Up');
@@ -45,13 +38,10 @@ void main() {
       expect(find.text('Please enter your email'), findsOneWidget);
     });
 
-    testWidgets('should show validation error for invalid email format',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignupScreen(),
-        ),
-      );
+    testWidgets('should show validation error for invalid email format', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignupScreen()));
 
       // Enter invalid email
       final emailField = find.widgetWithText(TextFormField, 'Email');
@@ -66,13 +56,10 @@ void main() {
       expect(find.text('Please enter a valid email'), findsOneWidget);
     });
 
-    testWidgets('should show validation error for empty password',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignupScreen(),
-        ),
-      );
+    testWidgets('should show validation error for empty password', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignupScreen()));
 
       // Enter email but not password
       final emailField = find.widgetWithText(TextFormField, 'Email');
@@ -87,13 +74,10 @@ void main() {
       expect(find.text('Please enter a password'), findsOneWidget);
     });
 
-    testWidgets('should show validation error for short password',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignupScreen(),
-        ),
-      );
+    testWidgets('should show validation error for short password', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignupScreen()));
 
       // Enter email and short password
       final emailField = find.widgetWithText(TextFormField, 'Email');
@@ -108,16 +92,16 @@ void main() {
       await tester.pumpAndSettle();
 
       // Check for validation error
-      expect(find.text('Password must be at least 6 characters'), findsOneWidget);
+      expect(
+        find.text('Password must be at least 6 characters'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('should show validation error when passwords do not match',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignupScreen(),
-        ),
-      );
+    testWidgets('should show validation error when passwords do not match', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignupScreen()));
 
       // Enter email
       final emailField = find.widgetWithText(TextFormField, 'Email');
@@ -128,7 +112,10 @@ void main() {
       await tester.enterText(passwordField, 'password123');
 
       // Enter different confirm password
-      final confirmPasswordField = find.widgetWithText(TextFormField, 'Confirm Password');
+      final confirmPasswordField = find.widgetWithText(
+        TextFormField,
+        'Confirm Password',
+      );
       await tester.enterText(confirmPasswordField, 'password456');
 
       // Tap sign up button
@@ -140,13 +127,10 @@ void main() {
       expect(find.text('Passwords do not match'), findsOneWidget);
     });
 
-    testWidgets('should toggle password visibility on both fields',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignupScreen(),
-        ),
-      );
+    testWidgets('should toggle password visibility on both fields', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignupScreen()));
 
       // Find password field TextFields
       final passwordFieldFinder = find.ancestor(
@@ -169,11 +153,14 @@ void main() {
       );
 
       expect(tester.widget<TextField>(passwordTextField).obscureText, true);
-      expect(tester.widget<TextField>(confirmPasswordTextField).obscureText, true);
+      expect(
+        tester.widget<TextField>(confirmPasswordTextField).obscureText,
+        true,
+      );
 
       // Find visibility toggles
       final visibilityToggles = find.byIcon(Icons.visibility_outlined);
-      
+
       // Tap first password visibility toggle
       await tester.tap(visibilityToggles.first);
       await tester.pumpAndSettle();
@@ -183,7 +170,10 @@ void main() {
         of: passwordFieldFinder,
         matching: find.byType(TextField),
       );
-      expect(tester.widget<TextField>(updatedPasswordTextField).obscureText, false);
+      expect(
+        tester.widget<TextField>(updatedPasswordTextField).obscureText,
+        false,
+      );
 
       // Tap second password visibility toggle
       await tester.tap(visibilityToggles.last);
@@ -194,11 +184,15 @@ void main() {
         of: confirmPasswordFieldFinder,
         matching: find.byType(TextField),
       );
-      expect(tester.widget<TextField>(updatedConfirmPasswordTextField).obscureText, false);
+      expect(
+        tester.widget<TextField>(updatedConfirmPasswordTextField).obscureText,
+        false,
+      );
     });
 
-    testWidgets('should navigate back when back button is tapped',
-        (WidgetTester tester) async {
+    testWidgets('should navigate back when back button is tapped', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -231,8 +225,9 @@ void main() {
       expect(find.text('Create Account'), findsNothing);
     });
 
-    testWidgets('should navigate back when Log In is tapped',
-        (WidgetTester tester) async {
+    testWidgets('should navigate back when Log In is tapped', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

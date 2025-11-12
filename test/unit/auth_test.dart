@@ -145,11 +145,7 @@ void main() {
     });
 
     test('should invalidate incorrect email formats', () {
-      final invalidEmails = [
-        'notanemail',
-        'missing@domain',
-        'no-at-sign.com',
-      ];
+      final invalidEmails = ['notanemail', 'missing@domain', 'no-at-sign.com'];
 
       for (final email in invalidEmails) {
         final isValid = email.contains('@') && email.contains('.');
@@ -210,10 +206,7 @@ void main() {
     });
 
     test('should handle user with only email', () {
-      final mockUser = MockUser(
-        uid: 'test-uid',
-        email: 'test@example.com',
-      );
+      final mockUser = MockUser(uid: 'test-uid', email: 'test@example.com');
 
       expect(mockUser.email, 'test@example.com');
       expect(mockUser.displayName, isNull);
