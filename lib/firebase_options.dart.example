@@ -14,7 +14,7 @@ import 'package:flutter/foundation.dart'
 ///   options: DefaultFirebaseOptions.currentPlatform,
 /// );
 /// ```
-/// 
+///
 /// INSTRUCCIONES:
 /// 1. Copia este archivo como 'firebase_options.dart'
 /// 2. Ejecuta: flutterfire configure
