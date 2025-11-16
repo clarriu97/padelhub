@@ -1,73 +1,90 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:padelhub/colors.dart';
+import 'package:padelhub/screens/home/feed_screen.dart';
+import 'package:padelhub/screens/home/profile_screen.dart';
+import 'package:padelhub/screens/admin/clubs_admin_screen.dart';
+import 'package:padelhub/services/club_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+  bool _isAdmin = false;
+  bool _isLoadingAdmin = true;
+  final ClubService _clubService = ClubService();
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdminStatus();
+  }
+
+  Future<void> _checkAdminStatus() async {
     final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final isAdmin = await _clubService.isUserAdmin(user.uid);
+      setState(() {
+        _isAdmin = isAdmin;
+        _isLoadingAdmin = false;
+      });
+    } else {
+      setState(() {
+        _isLoadingAdmin = false;
+      });
+    }
+  }
+
+  List<Widget> get _screens => [
+    const FeedScreen(),
+    if (_isAdmin) const ClubsAdminScreen(),
+    const ProfileScreen(),
+  ];
+
+  List<String> get _titles => ['PadelHub', if (_isAdmin) 'Admin', 'Profile'];
+
+  List<BottomNavigationBarItem> get _navItems => [
+    const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+    if (_isAdmin)
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.admin_panel_settings),
+        label: 'Admin',
+      ),
+    const BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoadingAdmin) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
-        title: const Text('PadelHub'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await FirebaseAuth.instance.signOut();
-            },
-          ),
-        ],
+        title: Text(_titles[_currentIndex]),
+        centerTitle: true,
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.sports_tennis, size: 100, color: AppColors.primary),
-              const SizedBox(height: 24),
-              Text(
-                'Welcome to PadelHub!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Logged in as:',
-                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  user?.email ?? 'Unknown',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        backgroundColor: AppColors.surface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textSecondary,
+        type: BottomNavigationBarType.fixed,
+        items: _navItems,
       ),
     );
   }
