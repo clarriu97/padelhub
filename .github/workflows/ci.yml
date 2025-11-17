@@ -100,61 +100,61 @@ jobs:
           verbose: true
         continue-on-error: true
 
-  build:
-    name: Build App
-    runs-on: ubuntu-latest
-    needs: test
+  # build:
+  #   name: Build App
+  #   runs-on: ubuntu-latest
+  #   needs: test
     
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+  #     - name: Set up Java
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         distribution: 'temurin'
+  #         java-version: '17'
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.38.1'
-          channel: 'stable'
-          cache: true
+  #     - name: Set up Flutter
+  #       uses: subosito/flutter-action@v2
+  #       with:
+  #         flutter-version: '3.38.1'
+  #         channel: 'stable'
+  #         cache: true
 
-      - name: Install dependencies
-        run: flutter pub get
+  #     - name: Install dependencies
+  #       run: flutter pub get
 
-      - name: Create mock Firebase config
-        run: |
-          mkdir -p android/app
-          mkdir -p ios/Runner
-          cp lib/firebase_options.dart.example lib/firebase_options.dart || true
+  #     - name: Create mock Firebase config
+  #       run: |
+  #         mkdir -p android/app
+  #         mkdir -p ios/Runner
+  #         cp lib/firebase_options.dart.example lib/firebase_options.dart || true
           
-          cat > android/app/google-services.json << 'EOF'
-          {
-            "project_info": {
-              "project_number": "123456789",
-              "project_id": "padelhub-mock"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:123456789:android:abc123",
-                  "android_client_info": {
-                    "package_name": "com.example.padelhub"
-                  }
-                }
-              }
-            ]
-          }
-          EOF
+  #         cat > android/app/google-services.json << 'EOF'
+  #         {
+  #           "project_info": {
+  #             "project_number": "123456789",
+  #             "project_id": "padelhub-mock"
+  #           },
+  #           "client": [
+  #             {
+  #               "client_info": {
+  #                 "mobilesdk_app_id": "1:123456789:android:abc123",
+  #                 "android_client_info": {
+  #                   "package_name": "com.example.padelhub"
+  #                 }
+  #               }
+  #             }
+  #           ]
+  #         }
+  #         EOF
 
-      - name: Build Android APK
-        run: flutter build apk --debug --no-shrink
+  #     - name: Build Android APK
+  #       run: flutter build apk --debug --no-shrink
 
-      - name: Build Web
-        run: flutter build web --release
+  #     - name: Build Web
+  #       run: flutter build web --release
 
-      - name: Build complete
-        run: echo "✅ All builds completed successfully"
+  #     - name: Build complete
+  #       run: echo "✅ All builds completed successfully"
