@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:padelhub/colors.dart';
+import 'package:padelhub/screens/booking/booking_screen.dart';
 import 'package:padelhub/screens/home/feed_screen.dart';
 import 'package:padelhub/screens/home/profile_screen.dart';
 import 'package:padelhub/screens/admin/clubs_admin_screen.dart';
@@ -41,14 +42,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Widget> get _screens => [
+    const BookingScreen(),
     const FeedScreen(),
     if (_isAdmin) const ClubsAdminScreen(),
     const ProfileScreen(),
   ];
 
-  List<String> get _titles => ['PadelHub', if (_isAdmin) 'Admin', 'Profile'];
+  List<String> get _titles => [
+    'Book',
+    'Home',
+    if (_isAdmin) 'Admin',
+    'Profile',
+  ];
 
   List<BottomNavigationBarItem> get _navItems => [
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.sports_tennis),
+      label: 'Book',
+    ),
     const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
     if (_isAdmin)
       const BottomNavigationBarItem(
