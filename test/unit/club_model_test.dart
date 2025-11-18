@@ -11,6 +11,15 @@ void main() {
         address: 'Calle Test 123',
         opensAt: '08:00',
         closesAt: '23:00',
+        website: 'https://example.com',
+        phoneNumber: '+34 123 456 789',
+        hasAccessibleAccess: true,
+        hasParking: true,
+        hasShop: false,
+        hasCafeteria: true,
+        hasSnackBar: false,
+        hasChangingRooms: true,
+        hasLockers: true,
       );
 
       expect(club.id, 'club123');
@@ -19,6 +28,15 @@ void main() {
       expect(club.address, 'Calle Test 123');
       expect(club.opensAt, '08:00');
       expect(club.closesAt, '23:00');
+      expect(club.website, 'https://example.com');
+      expect(club.phoneNumber, '+34 123 456 789');
+      expect(club.hasAccessibleAccess, isTrue);
+      expect(club.hasParking, isTrue);
+      expect(club.hasShop, isFalse);
+      expect(club.hasCafeteria, isTrue);
+      expect(club.hasSnackBar, isFalse);
+      expect(club.hasChangingRooms, isTrue);
+      expect(club.hasLockers, isTrue);
     });
 
     test('should create Club instance with null address', () {
@@ -34,6 +52,13 @@ void main() {
       expect(club.id, 'club123');
       expect(club.name, 'Test Club');
       expect(club.address, isNull);
+      expect(club.hasAccessibleAccess, isFalse);
+      expect(club.hasParking, isFalse);
+      expect(club.hasShop, isFalse);
+      expect(club.hasCafeteria, isFalse);
+      expect(club.hasSnackBar, isFalse);
+      expect(club.hasChangingRooms, isFalse);
+      expect(club.hasLockers, isFalse);
     });
 
     test('should serialize Club to Firestore format', () {
@@ -44,6 +69,10 @@ void main() {
         address: 'Calle Test 123',
         opensAt: '08:00',
         closesAt: '23:00',
+        website: 'https://example.com',
+        phoneNumber: '+34 123 456 789',
+        hasAccessibleAccess: true,
+        hasParking: true,
       );
 
       final firestoreData = club.toFirestore();
@@ -53,6 +82,15 @@ void main() {
       expect(firestoreData['address'], 'Calle Test 123');
       expect(firestoreData['opens_at'], '08:00');
       expect(firestoreData['closes_at'], '23:00');
+      expect(firestoreData['website'], 'https://example.com');
+      expect(firestoreData['phone_number'], '+34 123 456 789');
+      expect(firestoreData['has_accessible_access'], isTrue);
+      expect(firestoreData['has_parking'], isTrue);
+      expect(firestoreData['has_shop'], isFalse);
+      expect(firestoreData['has_cafeteria'], isFalse);
+      expect(firestoreData['has_snack_bar'], isFalse);
+      expect(firestoreData['has_changing_rooms'], isFalse);
+      expect(firestoreData['has_lockers'], isFalse);
     });
 
     test('should serialize Club with null address to Firestore format', () {
@@ -78,6 +116,15 @@ void main() {
         'address': 'Calle Test 123',
         'opens_at': '08:00',
         'closes_at': '23:00',
+        'website': 'https://example.com',
+        'phone_number': '+34 123 456 789',
+        'has_accessible_access': true,
+        'has_parking': true,
+        'has_shop': false,
+        'has_cafeteria': true,
+        'has_snack_bar': false,
+        'has_changing_rooms': true,
+        'has_lockers': true,
       };
 
       final club = Club.fromFirestore('club123', mockData);
@@ -88,6 +135,15 @@ void main() {
       expect(club.address, 'Calle Test 123');
       expect(club.opensAt, '08:00');
       expect(club.closesAt, '23:00');
+      expect(club.website, 'https://example.com');
+      expect(club.phoneNumber, '+34 123 456 789');
+      expect(club.hasAccessibleAccess, isTrue);
+      expect(club.hasParking, isTrue);
+      expect(club.hasShop, isFalse);
+      expect(club.hasCafeteria, isTrue);
+      expect(club.hasSnackBar, isFalse);
+      expect(club.hasChangingRooms, isTrue);
+      expect(club.hasLockers, isTrue);
     });
 
     test(

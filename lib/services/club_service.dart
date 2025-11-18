@@ -24,6 +24,15 @@ class ClubService {
     String? address,
     String? opensAt,
     String? closesAt,
+    String? website,
+    String? phoneNumber,
+    bool hasAccessibleAccess = false,
+    bool hasParking = false,
+    bool hasShop = false,
+    bool hasCafeteria = false,
+    bool hasSnackBar = false,
+    bool hasChangingRooms = false,
+    bool hasLockers = false,
   }) async {
     final club = Club(
       id: id,
@@ -32,6 +41,15 @@ class ClubService {
       address: address,
       opensAt: opensAt,
       closesAt: closesAt,
+      website: website,
+      phoneNumber: phoneNumber,
+      hasAccessibleAccess: hasAccessibleAccess,
+      hasParking: hasParking,
+      hasShop: hasShop,
+      hasCafeteria: hasCafeteria,
+      hasSnackBar: hasSnackBar,
+      hasChangingRooms: hasChangingRooms,
+      hasLockers: hasLockers,
     );
 
     await _firestore.collection('clubs').doc(id).set(club.toFirestore());

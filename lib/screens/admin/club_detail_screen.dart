@@ -23,6 +23,15 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
   late TextEditingController _addressController;
   late TextEditingController _opensAtController;
   late TextEditingController _closesAtController;
+  late TextEditingController _websiteController;
+  late TextEditingController _phoneNumberController;
+  late bool _hasAccessibleAccess;
+  late bool _hasParking;
+  late bool _hasShop;
+  late bool _hasCafeteria;
+  late bool _hasSnackBar;
+  late bool _hasChangingRooms;
+  late bool _hasLockers;
   bool _isLoading = false;
 
   @override
@@ -35,6 +44,17 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
     _closesAtController = TextEditingController(
       text: widget.club.closesAt ?? '',
     );
+    _websiteController = TextEditingController(text: widget.club.website ?? '');
+    _phoneNumberController = TextEditingController(
+      text: widget.club.phoneNumber ?? '',
+    );
+    _hasAccessibleAccess = widget.club.hasAccessibleAccess;
+    _hasParking = widget.club.hasParking;
+    _hasShop = widget.club.hasShop;
+    _hasCafeteria = widget.club.hasCafeteria;
+    _hasSnackBar = widget.club.hasSnackBar;
+    _hasChangingRooms = widget.club.hasChangingRooms;
+    _hasLockers = widget.club.hasLockers;
   }
 
   @override
@@ -44,6 +64,8 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
     _addressController.dispose();
     _opensAtController.dispose();
     _closesAtController.dispose();
+    _websiteController.dispose();
+    _phoneNumberController.dispose();
     super.dispose();
   }
 
@@ -66,6 +88,19 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
         closesAt: _closesAtController.text.trim().isEmpty
             ? null
             : _closesAtController.text.trim(),
+        website: _websiteController.text.trim().isEmpty
+            ? null
+            : _websiteController.text.trim(),
+        phoneNumber: _phoneNumberController.text.trim().isEmpty
+            ? null
+            : _phoneNumberController.text.trim(),
+        hasAccessibleAccess: _hasAccessibleAccess,
+        hasParking: _hasParking,
+        hasShop: _hasShop,
+        hasCafeteria: _hasCafeteria,
+        hasSnackBar: _hasSnackBar,
+        hasChangingRooms: _hasChangingRooms,
+        hasLockers: _hasLockers,
       );
 
       await _clubService.updateClub(updatedClub);
@@ -564,6 +599,139 @@ class _ClubDetailScreenState extends State<ClubDetailScreen> {
                                 filled: true,
                                 fillColor: AppColors.background,
                               ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Website
+                            TextFormField(
+                              controller: _websiteController,
+                              style: TextStyle(color: AppColors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: 'Website (optional)',
+                                labelStyle: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                                hintText: 'e.g., https://example.com',
+                                hintStyle: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                                border: const OutlineInputBorder(),
+                                filled: true,
+                                fillColor: AppColors.background,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Phone Number
+                            TextFormField(
+                              controller: _phoneNumberController,
+                              style: TextStyle(color: AppColors.textPrimary),
+                              decoration: InputDecoration(
+                                labelText: 'Phone Number (optional)',
+                                labelStyle: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                                hintText: 'e.g., +34 123 456 789',
+                                hintStyle: TextStyle(
+                                  color: AppColors.textSecondary,
+                                ),
+                                border: const OutlineInputBorder(),
+                                filled: true,
+                                fillColor: AppColors.background,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            // Facilities Section
+                            Text(
+                              'Facilities & Amenities',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            CheckboxListTile(
+                              title: Text(
+                                'Accessible Access',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                              subtitle: Text(
+                                'For people with reduced mobility',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              value: _hasAccessibleAccess,
+                              onChanged: (value) {
+                                setState(() => _hasAccessibleAccess = value!);
+                              },
+                              activeColor: AppColors.primary,
+                            ),
+                            CheckboxListTile(
+                              title: Text(
+                                'Parking',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                              value: _hasParking,
+                              onChanged: (value) {
+                                setState(() => _hasParking = value!);
+                              },
+                              activeColor: AppColors.primary,
+                            ),
+                            CheckboxListTile(
+                              title: Text(
+                                'Shop',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                              value: _hasShop,
+                              onChanged: (value) {
+                                setState(() => _hasShop = value!);
+                              },
+                              activeColor: AppColors.primary,
+                            ),
+                            CheckboxListTile(
+                              title: Text(
+                                'Cafeteria',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                              value: _hasCafeteria,
+                              onChanged: (value) {
+                                setState(() => _hasCafeteria = value!);
+                              },
+                              activeColor: AppColors.primary,
+                            ),
+                            CheckboxListTile(
+                              title: Text(
+                                'Snack Bar',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                              value: _hasSnackBar,
+                              onChanged: (value) {
+                                setState(() => _hasSnackBar = value!);
+                              },
+                              activeColor: AppColors.primary,
+                            ),
+                            CheckboxListTile(
+                              title: Text(
+                                'Changing Rooms',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                              value: _hasChangingRooms,
+                              onChanged: (value) {
+                                setState(() => _hasChangingRooms = value!);
+                              },
+                              activeColor: AppColors.primary,
+                            ),
+                            CheckboxListTile(
+                              title: Text(
+                                'Lockers',
+                                style: TextStyle(color: AppColors.textPrimary),
+                              ),
+                              value: _hasLockers,
+                              onChanged: (value) {
+                                setState(() => _hasLockers = value!);
+                              },
+                              activeColor: AppColors.primary,
                             ),
                           ],
                         ),
