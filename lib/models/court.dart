@@ -6,6 +6,7 @@ class Court {
   final bool hasLighting;
   final bool hasAirConditioning;
   final String? description;
+  final double pricePerHour; // Precio por hora en euros
 
   Court({
     required this.id,
@@ -15,6 +16,7 @@ class Court {
     this.hasLighting = true,
     this.hasAirConditioning = true,
     this.description,
+    this.pricePerHour = 20.0, // Precio por defecto
   });
 
   factory Court.fromFirestore(String id, Map<String, dynamic> data) {
@@ -26,6 +28,7 @@ class Court {
       hasLighting: data['has_lighting'] ?? true,
       hasAirConditioning: data['has_air_conditioning'] ?? true,
       description: data['description'],
+      pricePerHour: (data['price_per_hour'] ?? 20.0).toDouble(),
     );
   }
 
@@ -36,6 +39,7 @@ class Court {
       'indoor': indoor,
       'has_lighting': hasLighting,
       'has_air_conditioning': hasAirConditioning,
+      'price_per_hour': pricePerHour,
       if (description != null) 'description': description,
     };
   }
