@@ -1,1 +1,56 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"padelhub-78076","appId":"1:214331387315:android:737b5a9037653d4379afc6","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"padelhub-78076","appId":"1:214331387315:ios:91738958733bce2979afc6","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"padelhub-78076","configurations":{"android":"1:214331387315:android:737b5a9037653d4379afc6","ios":"1:214331387315:ios:91738958733bce2979afc6","web":"1:214331387315:web:0b9e14203e33d84179afc6"}}}}}}
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "eur3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": [
+    {
+      "codebase": "default",
+      "source": "functions",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ],
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "padelhub-78076",
+          "appId": "1:214331387315:android:737b5a9037653d4379afc6",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "padelhub-78076",
+          "appId": "1:214331387315:ios:91738958733bce2979afc6",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "padelhub-78076",
+          "configurations": {
+            "android": "1:214331387315:android:737b5a9037653d4379afc6",
+            "ios": "1:214331387315:ios:91738958733bce2979afc6",
+            "web": "1:214331387315:web:0b9e14203e33d84179afc6"
+          }
+        }
+      }
+    }
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "remoteconfig": {
+    "template": "remoteconfig.template.json"
+  }
+}

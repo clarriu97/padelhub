@@ -89,18 +89,25 @@ app.*.map.json
 **/ios/Runner/GeneratedPluginRegistrant.*
 
 # 🔥 FIREBASE - ARCHIVOS SENSIBLES (NO SUBIR) 🔥
-# Estos archivos contienen claves API y configuración sensible
+# Archivos con claves API y configuración sensible del proyecto
 google-services.json
 GoogleService-Info.plist
-firebase_options.dart
-.firebaserc
+lib/firebase_options.dart
+
+# Firebase - archivos de debug/logs (no versionar)
 firebase-debug.log
 firebase-debug.*.log
 firestore-debug.log
-firestore.indexes.json
-firestore.rules
-storage.rules
 ui-debug.log
+
+# NOTA: Estos archivos SÍ se deben versionar:
+# - .firebaserc (configuración del proyecto)
+# - firebase.json (configuración de servicios)
+# - firestore.rules (reglas de seguridad)
+# - firestore.indexes.json (índices de Firestore)
+# - storage.rules (reglas de Storage)
+# - functions/ (Cloud Functions)
+# - remoteconfig.template.json (plantilla de Remote Config)
 
 # Coverage
 coverage/
