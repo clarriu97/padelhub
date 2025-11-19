@@ -70,10 +70,10 @@ class BookingService {
     // Generar slots cada 30 minutos
     for (int minutes = openMinutes; minutes < closeMinutes; minutes += 30) {
       final timeStr = _minutesToTime(minutes);
-      
+
       // Verificar si al menos una pista está disponible en este horario
       bool hasAvailability = false;
-      
+
       for (final court in courts) {
         final courtBookings = bookingsByCourtId[court.id] ?? [];
         final availableDurations = _getAvailableDurations(
@@ -81,7 +81,7 @@ class BookingService {
           closeMinutes,
           courtBookings,
         );
-        
+
         if (availableDurations.isNotEmpty) {
           hasAvailability = true;
           break;

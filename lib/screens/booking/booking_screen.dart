@@ -62,7 +62,7 @@ class _BookingScreenState extends State<BookingScreen> {
       setState(() {
         _courts = courts;
       });
-      
+
       if (_courts.isNotEmpty) {
         await _loadBookingsAndSlots();
       }
@@ -233,15 +233,17 @@ class _BookingScreenState extends State<BookingScreen> {
                 // Mostrar pistas disponibles cuando se selecciona un horario
                 if (_selectedTimeSlot != null && _availableCourts.isEmpty)
                   _loadAvailableCourtsForSelectedTime(),
-                
+
                 if (_selectedTimeSlot != null && _availableCourts.isNotEmpty)
                   _buildAvailableCourtsSection(),
 
                 // Información de la pista seleccionada y duración
-                if (_selectedCourtAvailability != null) _buildDurationSelector(),
+                if (_selectedCourtAvailability != null)
+                  _buildDurationSelector(),
 
                 // Botón de reserva
-                if (_selectedCourtAvailability != null && _selectedDuration != null)
+                if (_selectedCourtAvailability != null &&
+                    _selectedDuration != null)
                   _buildBookButton(),
 
                 const SizedBox(height: 100),
@@ -442,14 +444,15 @@ class _BookingScreenState extends State<BookingScreen> {
                       _selectedTimeSlot = slot;
                       _selectedCourtAvailability = null;
                       _selectedDuration = null;
-                      
+
                       // Cargar pistas disponibles para este horario
-                      _availableCourts = _bookingService.getAvailableCourtsForTimeSlot(
-                        timeSlot: slot.startTime,
-                        bookingsByCourtId: _bookingsByCourtId,
-                        courts: _courts,
-                        closesAt: _selectedClub!.closesAt ?? '23:00',
-                      );
+                      _availableCourts = _bookingService
+                          .getAvailableCourtsForTimeSlot(
+                            timeSlot: slot.startTime,
+                            bookingsByCourtId: _bookingsByCourtId,
+                            courts: _courts,
+                            closesAt: _selectedClub!.closesAt ?? '23:00',
+                          );
                     });
                   }
                 : null,
@@ -520,9 +523,10 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         ),
         ..._availableCourts.map((courtAvailability) {
-          final isSelected = _selectedCourtAvailability?.court.id == 
+          final isSelected =
+              _selectedCourtAvailability?.court.id ==
               courtAvailability.court.id;
-          
+
           return GestureDetector(
             onTap: () {
               setState(() {
@@ -534,12 +538,12 @@ class _BookingScreenState extends State<BookingScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isSelected 
+                color: isSelected
                     ? AppColors.primary.withValues(alpha: 0.1)
                     : AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected 
+                  color: isSelected
                       ? AppColors.primary
                       : AppColors.textSecondary.withValues(alpha: 0.2),
                   width: isSelected ? 2 : 1,
@@ -585,7 +589,9 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   Icon(
                     isSelected ? Icons.check_circle : Icons.circle_outlined,
-                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ],
               ),
@@ -617,8 +623,12 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             const SizedBox(height: 12),
             Row(
-              children: _selectedCourtAvailability!.availableDurations.map((duration) {
-                final price = _selectedCourtAvailability!.getPriceForDuration(duration);
+              children: _selectedCourtAvailability!.availableDurations.map((
+                duration,
+              ) {
+                final price = _selectedCourtAvailability!.getPriceForDuration(
+                  duration,
+                );
                 final isSelected = _selectedDuration == duration;
 
                 return Expanded(
