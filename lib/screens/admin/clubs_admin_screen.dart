@@ -400,26 +400,28 @@ class _ClubsAdminScreenState extends State<ClubsAdminScreen> {
     if (!_isAdmin) {
       return Scaffold(
         backgroundColor: AppColors.background,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.lock, size: 64, color: AppColors.textSecondary),
-              const SizedBox(height: 16),
-              Text(
-                'Admin Access Required',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock, size: 64, color: AppColors.textSecondary),
+                const SizedBox(height: 16),
+                Text(
+                  'Admin Access Required',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'You do not have permission to access this page.',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  'You do not have permission to access this page.',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -427,109 +429,114 @@ class _ClubsAdminScreenState extends State<ClubsAdminScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: StreamBuilder<List<Club>>(
-        stream: _clubService.getClubs(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-                style: TextStyle(color: Colors.red),
-              ),
-            );
-          }
-
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final clubs = snapshot.data!;
-
-          if (clubs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.business,
-                    size: 64,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No clubs yet',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Create your first club to get started',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: clubs.length,
-            itemBuilder: (context, index) {
-              final club = clubs[index];
-              return Card(
-                color: AppColors.surface,
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ClubDetailScreen(club: club),
-                      ),
-                    );
-                  },
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                    child: Icon(Icons.business, color: AppColors.primary),
-                  ),
-                  title: Text(
-                    club.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'ID: ${club.id}',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
-                      Text(
-                        'Timezone: ${club.timezone}',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
-                      if (club.opensAt != null)
-                        Text(
-                          'Opens: ${club.opensAt}',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                    ],
-                  ),
+      body: SafeArea(
+        child: StreamBuilder<List<Club>>(
+          stream: _clubService.getClubs(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: TextStyle(color: Colors.red),
                 ),
               );
-            },
-          );
-        },
+            }
+
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final clubs = snapshot.data!;
+
+            if (clubs.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.business,
+                      size: 64,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No clubs yet',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create your first club to get started',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: clubs.length,
+              itemBuilder: (context, index) {
+                final club = clubs[index];
+                return Card(
+                  color: AppColors.surface,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ClubDetailScreen(club: club),
+                        ),
+                      );
+                    },
+                    leading: CircleAvatar(
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                      child: Icon(Icons.business, color: AppColors.primary),
+                    ),
+                    title: Text(
+                      club.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'ID: ${club.id}',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        Text(
+                          'Timezone: ${club.timezone}',
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                        if (club.opensAt != null)
+                          Text(
+                            'Opens: ${club.opensAt}',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.chevron_right,
+                          color: AppColors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showCreateClubDialog,
