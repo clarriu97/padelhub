@@ -12,16 +12,25 @@ import 'package:padelhub/services/booking_service.dart';
 import 'package:intl/intl.dart';
 
 class BookingScreen extends StatefulWidget {
-  const BookingScreen({super.key});
+  final ClubService? clubService;
+  final CourtService? courtService;
+  final BookingService? bookingService;
+
+  const BookingScreen({
+    super.key,
+    this.clubService,
+    this.courtService,
+    this.bookingService,
+  });
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  final ClubService _clubService = ClubService();
-  final CourtService _courtService = CourtService();
-  final BookingService _bookingService = BookingService();
+  late final ClubService _clubService;
+  late final CourtService _courtService;
+  late final BookingService _bookingService;
 
   Club? _selectedClub;
   DateTime _selectedDate = DateTime.now();
@@ -43,6 +52,9 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   void initState() {
     super.initState();
+    _clubService = widget.clubService ?? ClubService();
+    _courtService = widget.courtService ?? CourtService();
+    _bookingService = widget.bookingService ?? BookingService();
     _loadClubs();
   }
 

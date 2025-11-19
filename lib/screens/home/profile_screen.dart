@@ -7,7 +7,11 @@ import 'dart:io';
 import 'package:padelhub/colors.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final FirebaseAuth? auth;
+  final FirebaseFirestore? firestore;
+  final FirebaseStorage? storage;
+
+  const ProfileScreen({super.key, this.auth, this.firestore, this.storage});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -35,14 +39,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserProfile() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final auth = widget.auth ?? FirebaseAuth.instance;
+    final user = auth.currentUser;
     if (user == null) return;
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final firestore = widget.firestore ?? FirebaseFirestore.instance;
+      final doc = await firestore.collection('users').doc(user.uid).get();
 
       if (doc.exists) {
         setState(() {
@@ -76,11 +79,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       setState(() => _isLoading = true);
 
-      final user = FirebaseAuth.instance.currentUser;
+      final auth = widget.auth ?? FirebaseAuth.instance;
+      final user = auth.currentUser;
       if (user == null) return;
 
       // Upload to Firebase Storage
-      final ref = FirebaseStorage.instance
+      final storage = widget.storage ?? FirebaseStorage.instance;
+      final ref = storage
           .ref()
           .child('profile_images')
           .child('${user.uid}.jpg');
@@ -89,7 +94,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final downloadUrl = await ref.getDownloadURL();
 
       // Update Firestore
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      final firestore = widget.firestore ?? FirebaseFirestore.instance;
+      await firestore.collection('users').doc(user.uid).set({
         'profileImageUrl': downloadUrl,
       }, SetOptions(merge: true));
 
@@ -114,13 +120,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updateStatus() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final auth = widget.auth ?? FirebaseAuth.instance;
+    final user = auth.currentUser;
     if (user == null) return;
 
     try {
       setState(() => _isLoading = true);
 
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      final firestore = widget.firestore ?? FirebaseFirestore.instance;
+      await firestore.collection('users').doc(user.uid).set({
         'status': _statusController.text,
       }, SetOptions(merge: true));
 
@@ -145,13 +153,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _updateDisplayName() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final auth = widget.auth ?? FirebaseAuth.instance;
+    final user = auth.currentUser;
     if (user == null) return;
 
     try {
       setState(() => _isLoading = true);
 
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      final firestore = widget.firestore ?? FirebaseFirestore.instance;
+      await firestore.collection('users').doc(user.uid).set({
         'displayName': _nameController.text,
       }, SetOptions(merge: true));
 
@@ -177,7 +187,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    final auth = widget.auth ?? FirebaseAuth.instance;
+    final user = auth.currentUser;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -368,7 +379,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () async {
-                          await FirebaseAuth.instance.signOut();
+                          final auth = widget.auth ?? FirebaseAuth.instance;
+                          await auth.signOut();
                         },
                         icon: const Icon(Icons.logout),
                         label: const Text('Log Out'),
