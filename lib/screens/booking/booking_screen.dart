@@ -193,6 +193,9 @@ class _BookingScreenState extends State<BookingScreen> {
                 // Selector de club
                 _buildClubSelector(),
 
+                // Club information section
+                if (_selectedClub != null) _buildClubInfo(),
+
                 // Selector de fecha con calendario horizontal
                 _buildDateSelector(),
 
@@ -623,6 +626,153 @@ class _BookingScreenState extends State<BookingScreen> {
                   'Book Court',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClubInfo() {
+    if (_selectedClub == null) return const SizedBox();
+
+    return Card(
+      margin: const EdgeInsets.all(16),
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.business,
+                    color: AppColors.primary,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedClub!.name,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (_selectedClub!.address != null)
+                        Text(
+                          _selectedClub!.address!,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Horario
+            if (_selectedClub!.opensAt != null ||
+                _selectedClub!.closesAt != null)
+              _buildInfoRow(
+                Icons.schedule,
+                'Hours',
+                '${_selectedClub!.opensAt ?? 'N/A'} - ${_selectedClub!.closesAt ?? 'N/A'}',
+              ),
+
+            // Teléfono
+            if (_selectedClub!.phoneNumber != null)
+              _buildInfoRow(Icons.phone, 'Phone', _selectedClub!.phoneNumber!),
+
+            // Website
+            if (_selectedClub!.website != null)
+              _buildInfoRow(Icons.language, 'Website', _selectedClub!.website!),
+
+            // Facilities
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (_selectedClub!.hasParking) _buildFacilityChip('Parking'),
+                if (_selectedClub!.hasAccessibleAccess)
+                  _buildFacilityChip('Accessible'),
+                if (_selectedClub!.hasShop) _buildFacilityChip('Shop'),
+                if (_selectedClub!.hasCafeteria)
+                  _buildFacilityChip('Cafeteria'),
+                if (_selectedClub!.hasSnackBar) _buildFacilityChip('Snack Bar'),
+                if (_selectedClub!.hasChangingRooms)
+                  _buildFacilityChip('Changing Rooms'),
+                if (_selectedClub!.hasLockers) _buildFacilityChip('Lockers'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.textSecondary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFacilityChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: AppColors.primary,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );

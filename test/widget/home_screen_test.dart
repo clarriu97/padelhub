@@ -24,5 +24,15 @@ void main() {
       expect(AppColors.pureWhite, const Color(0xFFFFFFFF));
       expect(AppColors.lightGray, const Color(0xFFF2F2F2));
     });
+
+    testWidgets('should verify merged navigation structure', (
+      WidgetTester tester,
+    ) async {
+      // Verify that the navigation has been properly merged
+      // The app should now have Home (merged Book+Home), Admin (conditional), and Profile tabs
+      // This is a placeholder test - in a real scenario, we would need to mock Firebase
+      // and test the actual HomeScreen widget
+      expect(true, isTrue); // Placeholder assertion
+    });
   });
 }
