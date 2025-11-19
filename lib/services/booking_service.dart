@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padelhub/models/booking.dart';
 import 'package:padelhub/models/time_slot.dart';
+import 'package:padelhub/models/court.dart';
+import 'package:padelhub/models/court_availability.dart';
 
 class BookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -25,6 +27,112 @@ class BookingService {
               .map((doc) => Booking.fromFirestore(doc.id, doc.data()))
               .toList(),
         );
+  }
+
+  /// Obtener todas las reservas de un club en una fecha específica (todas las pistas)
+  Future<Map<String, List<Booking>>> getClubBookingsForDate({
+    required String clubId,
+    required List<Court> courts,
+    required String date,
+  }) async {
+    final Map<String, List<Booking>> bookingsByCourtId = {};
+
+    for (final court in courts) {
+      final bookingsSnapshot = await _firestore
+          .collection('clubs')
+          .doc(clubId)
+          .collection('courts')
+          .doc(court.id)
+          .collection('bookings')
+          .where('date', isEqualTo: date)
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      bookingsByCourtId[court.id] = bookingsSnapshot.docs
+          .map((doc) => Booking.fromFirestore(doc.id, doc.data()))
+          .toList();
+    }
+
+    return bookingsByCourtId;
+  }
+
+  /// Calcular slots de tiempo disponibles considerando todas las pistas
+  List<TimeSlot> calculateAvailableTimeSlots({
+    required Map<String, List<Booking>> bookingsByCourtId,
+    required List<Court> courts,
+    required String opensAt,
+    required String closesAt,
+  }) {
+    final slots = <TimeSlot>[];
+    final openMinutes = _timeToMinutes(opensAt);
+    final closeMinutes = _timeToMinutes(closesAt);
+
+    // Generar slots cada 30 minutos
+    for (int minutes = openMinutes; minutes < closeMinutes; minutes += 30) {
+      final timeStr = _minutesToTime(minutes);
+      
+      // Verificar si al menos una pista está disponible en este horario
+      bool hasAvailability = false;
+      
+      for (final court in courts) {
+        final courtBookings = bookingsByCourtId[court.id] ?? [];
+        final availableDurations = _getAvailableDurations(
+          minutes,
+          closeMinutes,
+          courtBookings,
+        );
+        
+        if (availableDurations.isNotEmpty) {
+          hasAvailability = true;
+          break;
+        }
+      }
+
+      if (hasAvailability) {
+        slots.add(
+          TimeSlot(
+            startTime: timeStr,
+            availableDurations: [60, 90], // Placeholder, se calculará por pista
+            isAvailable: true,
+          ),
+        );
+      }
+    }
+
+    return slots;
+  }
+
+  /// Obtener pistas disponibles para un slot de tiempo específico
+  List<CourtAvailability> getAvailableCourtsForTimeSlot({
+    required String timeSlot,
+    required Map<String, List<Booking>> bookingsByCourtId,
+    required List<Court> courts,
+    required String closesAt,
+  }) {
+    final availableCourts = <CourtAvailability>[];
+    final slotMinutes = _timeToMinutes(timeSlot);
+    final closeMinutes = _timeToMinutes(closesAt);
+
+    for (final court in courts) {
+      final courtBookings = bookingsByCourtId[court.id] ?? [];
+      final availableDurations = _getAvailableDurations(
+        slotMinutes,
+        closeMinutes,
+        courtBookings,
+      );
+
+      if (availableDurations.isNotEmpty) {
+        availableCourts.add(
+          CourtAvailability(
+            court: court,
+            availableDurations: availableDurations,
+            timeSlot: timeSlot,
+          ),
+        );
+      }
+    }
+
+    return availableCourts;
   }
 
   /// Obtener las reservas de un usuario

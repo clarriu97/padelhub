@@ -5,6 +5,7 @@ import 'package:padelhub/models/club.dart';
 import 'package:padelhub/models/court.dart';
 import 'package:padelhub/models/booking.dart';
 import 'package:padelhub/models/time_slot.dart';
+import 'package:padelhub/models/court_availability.dart';
 import 'package:padelhub/services/club_service.dart';
 import 'package:padelhub/services/court_service.dart';
 import 'package:padelhub/services/booking_service.dart';
@@ -23,17 +24,18 @@ class _BookingScreenState extends State<BookingScreen> {
   final BookingService _bookingService = BookingService();
 
   Club? _selectedClub;
-  Court? _selectedCourt;
   DateTime _selectedDate = DateTime.now();
   TimeSlot? _selectedTimeSlot;
+  CourtAvailability? _selectedCourtAvailability;
   int? _selectedDuration;
   bool _showAvailableOnly = true;
   bool _isLoading = false;
 
   List<Club> _clubs = [];
   List<Court> _courts = [];
-  List<Booking> _existingBookings = [];
+  Map<String, List<Booking>> _bookingsByCourtId = {};
   List<TimeSlot> _availableSlots = [];
+  List<CourtAvailability> _availableCourts = [];
 
   @override
   void initState() {
@@ -56,43 +58,56 @@ class _BookingScreenState extends State<BookingScreen> {
   Future<void> _loadCourts() async {
     if (_selectedClub == null) return;
 
-    _courtService.getCourts(_selectedClub!.id).listen((courts) {
+    _courtService.getCourts(_selectedClub!.id).listen((courts) async {
       setState(() {
         _courts = courts;
-        if (_courts.isNotEmpty) {
-          _selectedCourt = _courts.first;
-          _loadBookingsAndSlots();
-        }
       });
+      
+      if (_courts.isNotEmpty) {
+        await _loadBookingsAndSlots();
+      }
     });
   }
 
-  void _loadBookingsAndSlots() {
-    if (_selectedClub == null || _selectedCourt == null) return;
+  Future<void> _loadBookingsAndSlots() async {
+    if (_selectedClub == null || _courts.isEmpty) return;
 
-    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    setState(() => _isLoading = true);
 
-    _bookingService
-        .getCourtBookings(
-          clubId: _selectedClub!.id,
-          courtId: _selectedCourt!.id,
-          date: dateStr,
-        )
-        .listen((bookings) {
-          setState(() {
-            _existingBookings = bookings;
-            _availableSlots = _bookingService.calculateAvailableSlots(
-              existingBookings: _existingBookings,
-              opensAt: _selectedClub!.opensAt ?? '08:00',
-              closesAt: _selectedClub!.closesAt ?? '23:00',
-            );
-          });
-        });
+    try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+
+      // Obtener todas las reservas de todas las pistas
+      _bookingsByCourtId = await _bookingService.getClubBookingsForDate(
+        clubId: _selectedClub!.id,
+        courts: _courts,
+        date: dateStr,
+      );
+
+      // Calcular slots disponibles considerando todas las pistas
+      _availableSlots = _bookingService.calculateAvailableTimeSlots(
+        bookingsByCourtId: _bookingsByCourtId,
+        courts: _courts,
+        opensAt: _selectedClub!.opensAt ?? '08:00',
+        closesAt: _selectedClub!.closesAt ?? '23:00',
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading availability: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _createBooking() async {
     if (_selectedClub == null ||
-        _selectedCourt == null ||
+        _selectedCourtAvailability == null ||
         _selectedTimeSlot == null ||
         _selectedDuration == null) {
       return;
@@ -107,12 +122,12 @@ class _BookingScreenState extends State<BookingScreen> {
       final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
       final price = _bookingService.calculatePrice(
         durationMinutes: _selectedDuration!,
-        pricePerHour: _selectedCourt!.pricePerHour,
+        pricePerHour: _selectedCourtAvailability!.court.pricePerHour,
       );
 
       await _bookingService.createBooking(
         clubId: _selectedClub!.id,
-        courtId: _selectedCourt!.id,
+        courtId: _selectedCourtAvailability!.court.id,
         userId: user.uid,
         date: dateStr,
         startTime: _selectedTimeSlot!.startTime,
@@ -127,8 +142,12 @@ class _BookingScreenState extends State<BookingScreen> {
         );
         setState(() {
           _selectedTimeSlot = null;
+          _selectedCourtAvailability = null;
           _selectedDuration = null;
+          _availableCourts = [];
         });
+        // Reload bookings
+        await _loadBookingsAndSlots();
       }
     } catch (e) {
       if (mounted) {
@@ -203,13 +222,26 @@ class _BookingScreenState extends State<BookingScreen> {
                 _buildAvailableOnlyToggle(),
 
                 // Grid de slots de tiempo
-                _buildTimeSlotGrid(),
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  )
+                else
+                  _buildTimeSlotGrid(),
 
-                // Información de la pista seleccionada
-                if (_selectedTimeSlot != null) _buildCourtInfo(),
+                // Mostrar pistas disponibles cuando se selecciona un horario
+                if (_selectedTimeSlot != null && _availableCourts.isEmpty)
+                  _loadAvailableCourtsForSelectedTime(),
+                
+                if (_selectedTimeSlot != null && _availableCourts.isNotEmpty)
+                  _buildAvailableCourtsSection(),
+
+                // Información de la pista seleccionada y duración
+                if (_selectedCourtAvailability != null) _buildDurationSelector(),
 
                 // Botón de reserva
-                if (_selectedTimeSlot != null && _selectedDuration != null)
+                if (_selectedCourtAvailability != null && _selectedDuration != null)
                   _buildBookButton(),
 
                 const SizedBox(height: 100),
@@ -219,6 +251,23 @@ class _BookingScreenState extends State<BookingScreen> {
         ],
       ),
     );
+  }
+
+  Widget _loadAvailableCourtsForSelectedTime() {
+    // Load available courts when time slot is selected
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_selectedTimeSlot != null && _availableCourts.isEmpty) {
+        setState(() {
+          _availableCourts = _bookingService.getAvailableCourtsForTimeSlot(
+            timeSlot: _selectedTimeSlot!.startTime,
+            bookingsByCourtId: _bookingsByCourtId,
+            courts: _courts,
+            closesAt: _selectedClub!.closesAt ?? '23:00',
+          );
+        });
+      }
+    });
+    return const SizedBox.shrink();
   }
 
   Widget _buildClubSelector() {
@@ -248,9 +297,10 @@ class _BookingScreenState extends State<BookingScreen> {
         onChanged: (club) {
           setState(() {
             _selectedClub = club;
-            _selectedCourt = null;
             _selectedTimeSlot = null;
+            _selectedCourtAvailability = null;
             _selectedDuration = null;
+            _availableCourts = [];
             _loadCourts();
           });
         },
@@ -264,50 +314,6 @@ class _BookingScreenState extends State<BookingScreen> {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         children: [
-          // Selector de pista
-          if (_courts.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Icon(Icons.sports_tennis, color: AppColors.primary),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<Court>(
-                      initialValue: _selectedCourt,
-                      decoration: InputDecoration(
-                        filled: true,
-                        fillColor: AppColors.background,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      dropdownColor: AppColors.surface,
-                      style: TextStyle(color: AppColors.textPrimary),
-                      items: _courts.map((court) {
-                        return DropdownMenuItem(
-                          value: court,
-                          child: Text(court.name),
-                        );
-                      }).toList(),
-                      onChanged: (court) {
-                        setState(() {
-                          _selectedCourt = court;
-                          _loadBookingsAndSlots();
-                        });
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 16),
-
           // Calendario horizontal
           SizedBox(
             height: 100,
@@ -326,7 +332,9 @@ class _BookingScreenState extends State<BookingScreen> {
                     setState(() {
                       _selectedDate = date;
                       _selectedTimeSlot = null;
+                      _selectedCourtAvailability = null;
                       _selectedDuration = null;
+                      _availableCourts = [];
                       _loadBookingsAndSlots();
                     });
                   },
@@ -432,7 +440,16 @@ class _BookingScreenState extends State<BookingScreen> {
                 ? () {
                     setState(() {
                       _selectedTimeSlot = slot;
-                      _selectedDuration = slot.availableDurations.first;
+                      _selectedCourtAvailability = null;
+                      _selectedDuration = null;
+                      
+                      // Cargar pistas disponibles para este horario
+                      _availableCourts = _bookingService.getAvailableCourtsForTimeSlot(
+                        timeSlot: slot.startTime,
+                        bookingsByCourtId: _bookingsByCourtId,
+                        courts: _courts,
+                        closesAt: _selectedClub!.closesAt ?? '23:00',
+                      );
                     });
                   }
                 : null,
@@ -479,10 +496,108 @@ class _BookingScreenState extends State<BookingScreen> {
     return _availableSlots; // Por ahora, usa los disponibles
   }
 
-  Widget _buildCourtInfo() {
-    if (_selectedCourt == null || _selectedTimeSlot == null) {
-      return const SizedBox();
-    }
+  Widget _buildAvailableCourtsSection() {
+    if (_availableCourts.isEmpty) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.schedule, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Available courts at ${_selectedTimeSlot!.startTime}',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        ..._availableCourts.map((courtAvailability) {
+          final isSelected = _selectedCourtAvailability?.court.id == 
+              courtAvailability.court.id;
+          
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedCourtAvailability = courtAvailability;
+                _selectedDuration = courtAvailability.availableDurations.first;
+              });
+            },
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isSelected 
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected 
+                      ? AppColors.primary
+                      : AppColors.textSecondary.withValues(alpha: 0.2),
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.sports_tennis,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          courtAvailability.court.name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${courtAvailability.court.indoor ? 'Indoor' : 'Outdoor'} | ${courtAvailability.court.surface}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    isSelected ? Icons.check_circle : Icons.circle_outlined,
+                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildDurationSelector() {
+    if (_selectedCourtAvailability == null) return const SizedBox();
 
     return Card(
       margin: const EdgeInsets.all(16),
@@ -492,50 +607,18 @@ class _BookingScreenState extends State<BookingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.sports_tennis, color: AppColors.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedCourt!.name,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      Text(
-                        '${_selectedCourt!.indoor ? 'Indoor' : 'Outdoor'} | ${_selectedCourt!.surface}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
             Text(
               'Select duration:',
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
-              children: _selectedTimeSlot!.availableDurations.map((duration) {
-                final price = _bookingService.calculatePrice(
-                  durationMinutes: duration,
-                  pricePerHour: _selectedCourt!.pricePerHour,
-                );
+              children: _selectedCourtAvailability!.availableDurations.map((duration) {
+                final price = _selectedCourtAvailability!.getPriceForDuration(duration);
                 final isSelected = _selectedDuration == duration;
 
                 return Expanded(
