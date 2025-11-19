@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:padelhub/colors.dart';
 import 'package:padelhub/screens/booking/booking_screen.dart';
+import 'package:padelhub/screens/booking/user_bookings_screen.dart';
 import 'package:padelhub/screens/home/profile_screen.dart';
 import 'package:padelhub/screens/admin/clubs_admin_screen.dart';
 import 'package:padelhub/services/club_service.dart';
@@ -93,18 +94,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   List<Widget> get _screens => [
     const BookingScreen(),
+    const UserBookingsScreen(),
     if (_isAdmin && _adminModeActivated) const ClubsAdminScreen(),
     const ProfileScreen(),
   ];
 
   List<String> get _titles => [
     'Home',
+    'My Bookings',
     if (_isAdmin && _adminModeActivated) 'Admin',
     'Profile',
   ];
 
   List<BottomNavigationBarItem> get _navItems => [
     const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.event),
+      label: 'My Bookings',
+    ),
     if (_isAdmin && _adminModeActivated)
       const BottomNavigationBarItem(
         icon: Icon(Icons.admin_panel_settings),

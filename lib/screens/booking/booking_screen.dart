@@ -30,12 +30,15 @@ class _BookingScreenState extends State<BookingScreen> {
   int? _selectedDuration;
   bool _showAvailableOnly = true;
   bool _isLoading = false;
+  bool _enableSharing = false;
 
   List<Club> _clubs = [];
   List<Court> _courts = [];
   Map<String, List<Booking>> _bookingsByCourtId = {};
   List<TimeSlot> _availableSlots = [];
   List<CourtAvailability> _availableCourts = [];
+  List<Booking> _shareableBookings = [];
+  bool _showShareableBookings = false;
 
   @override
   void initState() {
@@ -105,6 +108,73 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
+  Future<void> _loadShareableBookings() async {
+    if (_selectedClub == null || _courts.isEmpty) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+      final user = FirebaseAuth.instance.currentUser;
+
+      final shareableBookings = await _bookingService.getShareableBookings(
+        clubId: _selectedClub!.id,
+        courts: _courts,
+        date: dateStr,
+      );
+
+      // Filter out bookings owned by current user
+      setState(() {
+        _shareableBookings = shareableBookings
+            .where((b) => b.userId != user?.uid)
+            .toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading shareable bookings: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _requestToJoin(Booking booking) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _bookingService.requestToJoinBooking(
+        clubId: booking.clubId,
+        courtId: booking.courtId,
+        bookingId: booking.id,
+        userId: user.uid,
+        userName: user.email ?? user.displayName ?? 'Unknown User',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Join request sent! Waiting for owner approval.'),
+          ),
+        );
+        // Reload shareable bookings to update UI
+        await _loadShareableBookings();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error sending request: $e')));
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _createBooking() async {
     if (_selectedClub == null ||
         _selectedCourtAvailability == null ||
@@ -134,6 +204,7 @@ class _BookingScreenState extends State<BookingScreen> {
         durationMinutes: _selectedDuration!,
         players: [user.email ?? 'Player 1'],
         price: price,
+        sharingEnabled: _enableSharing,
       );
 
       if (mounted) {
@@ -145,6 +216,7 @@ class _BookingScreenState extends State<BookingScreen> {
           _selectedCourtAvailability = null;
           _selectedDuration = null;
           _availableCourts = [];
+          _enableSharing = false;
         });
         // Reload bookings
         await _loadBookingsAndSlots();
@@ -218,33 +290,46 @@ class _BookingScreenState extends State<BookingScreen> {
                 // Selector de fecha con calendario horizontal
                 _buildDateSelector(),
 
-                // Toggle para mostrar solo slots disponibles
-                _buildAvailableOnlyToggle(),
+                // Toggle para ver reservas compartibles
+                _buildShareableToggle(),
 
-                // Grid de slots de tiempo
-                if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
-                  )
-                else
-                  _buildTimeSlotGrid(),
+                // Mostrar reservas compartibles o slots disponibles
+                if (_showShareableBookings)
+                  _buildShareableBookingsSection()
+                else ...[
+                  // Toggle para mostrar solo slots disponibles
+                  _buildAvailableOnlyToggle(),
 
-                // Mostrar pistas disponibles cuando se selecciona un horario
-                if (_selectedTimeSlot != null && _availableCourts.isEmpty)
-                  _loadAvailableCourtsForSelectedTime(),
+                  // Grid de slots de tiempo
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(32),
+                      child: CircularProgressIndicator(),
+                    )
+                  else
+                    _buildTimeSlotGrid(),
 
-                if (_selectedTimeSlot != null && _availableCourts.isNotEmpty)
-                  _buildAvailableCourtsSection(),
+                  // Mostrar pistas disponibles cuando se selecciona un horario
+                  if (_selectedTimeSlot != null && _availableCourts.isEmpty)
+                    _loadAvailableCourtsForSelectedTime(),
 
-                // Información de la pista seleccionada y duración
-                if (_selectedCourtAvailability != null)
-                  _buildDurationSelector(),
+                  if (_selectedTimeSlot != null && _availableCourts.isNotEmpty)
+                    _buildAvailableCourtsSection(),
 
-                // Botón de reserva
-                if (_selectedCourtAvailability != null &&
-                    _selectedDuration != null)
-                  _buildBookButton(),
+                  // Información de la pista seleccionada y duración
+                  if (_selectedCourtAvailability != null)
+                    _buildDurationSelector(),
+
+                  // Sharing toggle
+                  if (_selectedCourtAvailability != null &&
+                      _selectedDuration != null)
+                    _buildSharingToggle(),
+
+                  // Botón de reserva
+                  if (_selectedCourtAvailability != null &&
+                      _selectedDuration != null)
+                    _buildBookButton(),
+                ],
 
                 const SizedBox(height: 100),
               ],
@@ -337,8 +422,13 @@ class _BookingScreenState extends State<BookingScreen> {
                       _selectedCourtAvailability = null;
                       _selectedDuration = null;
                       _availableCourts = [];
-                      _loadBookingsAndSlots();
                     });
+                    // Reload based on current mode
+                    if (_showShareableBookings) {
+                      _loadShareableBookings();
+                    } else {
+                      _loadBookingsAndSlots();
+                    }
                   },
                   child: Container(
                     width: 70,
@@ -853,6 +943,55 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
+  Widget _buildSharingToggle() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(
+              _enableSharing ? Icons.share : Icons.lock,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Share Court',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Allow others to request to join this booking',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: _enableSharing,
+              onChanged: (value) {
+                setState(() => _enableSharing = value);
+              },
+              activeTrackColor: AppColors.primary,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFacilityChip(String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -868,6 +1007,246 @@ class _BookingScreenState extends State<BookingScreen> {
           fontWeight: FontWeight.w500,
         ),
       ),
+    );
+  }
+
+  Widget _buildShareableToggle() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () {
+                setState(() {
+                  _showShareableBookings = false;
+                });
+              },
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('New Booking'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: !_showShareableBookings
+                    ? AppColors.primary
+                    : AppColors.surface,
+                foregroundColor: !_showShareableBookings
+                    ? AppColors.onPrimary
+                    : AppColors.textPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                setState(() {
+                  _showShareableBookings = true;
+                });
+                await _loadShareableBookings();
+              },
+              icon: const Icon(Icons.group_add),
+              label: const Text('Join Court'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _showShareableBookings
+                    ? AppColors.primary
+                    : AppColors.surface,
+                foregroundColor: _showShareableBookings
+                    ? AppColors.onPrimary
+                    : AppColors.textPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShareableBookingsSection() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(32),
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_shareableBookings.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            Icon(
+              Icons.event_busy,
+              size: 64,
+              color: AppColors.textSecondary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No shareable bookings available',
+              style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try selecting a different date',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            'Available Courts to Join',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        ..._shareableBookings.map((booking) {
+          final user = FirebaseAuth.instance.currentUser;
+          final hasRequested = booking.hasJoinRequest(user?.uid ?? '');
+          final canJoin = booking.canUserJoin(user?.uid ?? '');
+
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: AppColors.surface,
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Time and court info
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${booking.startTime} - ${booking.endTime}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onPrimary,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(Icons.sports_tennis, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Court ${booking.courtId}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Duration and price
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.timer,
+                        color: AppColors.textSecondary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${booking.durationMinutes} min',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(
+                        Icons.people,
+                        color: AppColors.textSecondary,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${booking.sharedWith.length + 1}/${booking.maxPlayers} players',
+                        style: TextStyle(color: AppColors.textSecondary),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${booking.price.toStringAsFixed(2)} €',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Join button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: hasRequested || !canJoin
+                          ? null
+                          : () => _requestToJoin(booking),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        hasRequested
+                            ? 'Request Pending'
+                            : !canJoin
+                            ? 'Court Full'
+                            : 'Request to Join',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }

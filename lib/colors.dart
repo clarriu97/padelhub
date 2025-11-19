@@ -15,6 +15,8 @@ class AppColors {
   static const Color textSecondary = Color(0xFF666666);
   static const Color onPrimary = pureWhite;
   static const Color onSecondary = darkGray;
+  static const Color success = Color(0xFF4CAF50);
+  static const Color error = Color(0xFFE53935);
 
   AppColors._();
 }

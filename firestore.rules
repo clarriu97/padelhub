@@ -28,8 +28,18 @@ service cloud.firestore {
         match /bookings/{bookingId} {
           allow read: if request.auth != null;
           allow create: if request.auth != null;
-          allow update: if request.auth != null && 
-            (request.auth.uid == resource.data.userId || isAdmin());
+          allow update: if request.auth != null && (
+            // Owner can update their own booking
+            request.auth.uid == resource.data.userId ||
+            // Anyone can add a join request to a shareable booking
+            (resource.data.sharingEnabled == true && 
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinRequests'])) ||
+            // Owner can approve/reject requests (modify sharedWith and joinRequests)
+            (request.auth.uid == resource.data.userId &&
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinRequests', 'sharedWith'])) ||
+            // Admin can do anything
+            isAdmin()
+          );
           allow delete: if isAdmin();
         }
       }

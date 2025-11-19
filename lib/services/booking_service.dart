@@ -166,6 +166,84 @@ class BookingService {
     return allBookings;
   }
 
+  /// Obtener reservas futuras del usuario
+  Future<List<Booking>> getUserUpcomingBookings(String userId) async {
+    final allBookings = await getUserBookings(userId);
+    return allBookings.where((booking) => booking.isUpcoming).toList();
+  }
+
+  /// Obtener reservas pasadas del usuario
+  Future<List<Booking>> getUserPastBookings(String userId) async {
+    final allBookings = await getUserBookings(userId);
+    final pastBookings = allBookings
+        .where((booking) => booking.isPast)
+        .toList();
+    // Ordenar descendente (más recientes primero)
+    pastBookings.sort((a, b) => b.startDateTime.compareTo(a.startDateTime));
+    return pastBookings;
+  }
+
+  /// Obtener reservas del usuario en un rango de fechas
+  Future<List<Booking>> getUserBookingsByDateRange(
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final allBookings = await getUserBookings(userId);
+    return allBookings.where((booking) {
+      final bookingDate = booking.startDateTime;
+      return bookingDate.isAfter(start) && bookingDate.isBefore(end);
+    }).toList();
+  }
+
+  /// Obtener todas las reservas donde el usuario tiene acceso (propias + compartidas)
+  Future<List<Booking>> getUserAccessibleBookings(String userId) async {
+    final clubsSnapshot = await _firestore.collection('clubs').get();
+    final List<Booking> allBookings = [];
+
+    for (final clubDoc in clubsSnapshot.docs) {
+      final courtsSnapshot = await clubDoc.reference.collection('courts').get();
+
+      for (final courtDoc in courtsSnapshot.docs) {
+        // Obtener reservas donde el usuario es el propietario
+        final ownBookingsSnapshot = await courtDoc.reference
+            .collection('bookings')
+            .where('userId', isEqualTo: userId)
+            .where('status', isEqualTo: 'active')
+            .get();
+
+        allBookings.addAll(
+          ownBookingsSnapshot.docs.map(
+            (doc) => Booking.fromFirestore(doc.id, doc.data()),
+          ),
+        );
+
+        // Obtener reservas compartidas con el usuario
+        final sharedBookingsSnapshot = await courtDoc.reference
+            .collection('bookings')
+            .where('sharedWith', arrayContains: userId)
+            .where('status', isEqualTo: 'active')
+            .get();
+
+        allBookings.addAll(
+          sharedBookingsSnapshot.docs.map(
+            (doc) => Booking.fromFirestore(doc.id, doc.data()),
+          ),
+        );
+      }
+    }
+
+    // Eliminar duplicados y ordenar
+    final uniqueBookings = <String, Booking>{};
+    for (final booking in allBookings) {
+      uniqueBookings[booking.id] = booking;
+    }
+
+    final result = uniqueBookings.values.toList();
+    result.sort((a, b) => a.startDateTime.compareTo(b.startDateTime));
+    return result;
+  }
+
   /// Calcular slots disponibles para una pista en una fecha
   List<TimeSlot> calculateAvailableSlots({
     required List<Booking> existingBookings,
@@ -258,6 +336,7 @@ class BookingService {
     required int durationMinutes,
     required List<String> players,
     required double price,
+    bool sharingEnabled = false,
   }) async {
     final booking = Booking(
       id: '', // Firestore generará el ID
@@ -271,6 +350,7 @@ class BookingService {
       price: price,
       createdAt: DateTime.now(),
       status: 'active',
+      sharingEnabled: sharingEnabled,
     );
 
     final docRef = await _firestore
@@ -298,6 +378,189 @@ class BookingService {
         .collection('bookings')
         .doc(bookingId)
         .update({'status': 'cancelled'});
+  }
+
+  /// Solicitar unirse a una reserva
+  Future<void> requestToJoinBooking({
+    required String clubId,
+    required String courtId,
+    required String bookingId,
+    required String userId,
+    required String userName,
+  }) async {
+    final bookingRef = _firestore
+        .collection('clubs')
+        .doc(clubId)
+        .collection('courts')
+        .doc(courtId)
+        .collection('bookings')
+        .doc(bookingId);
+
+    final bookingDoc = await bookingRef.get();
+    if (!bookingDoc.exists) {
+      throw Exception('Booking not found');
+    }
+
+    final booking = Booking.fromFirestore(bookingDoc.id, bookingDoc.data()!);
+
+    // Verificar que el usuario puede unirse
+    if (!booking.canUserJoin(userId)) {
+      throw Exception('Cannot join this booking');
+    }
+
+    // Verificar que no haya una solicitud pendiente
+    if (booking.hasJoinRequest(userId)) {
+      throw Exception('Join request already exists');
+    }
+
+    // Añadir solicitud
+    final joinRequest = {
+      'userId': userId,
+      'userName': userName,
+      'requestedAt': DateTime.now().toIso8601String(),
+    };
+
+    await bookingRef.update({
+      'joinRequests': FieldValue.arrayUnion([joinRequest]),
+    });
+  }
+
+  /// Aprobar solicitud de unión
+  Future<void> approveJoinRequest({
+    required String clubId,
+    required String courtId,
+    required String bookingId,
+    required String requestUserId,
+  }) async {
+    final bookingRef = _firestore
+        .collection('clubs')
+        .doc(clubId)
+        .collection('courts')
+        .doc(courtId)
+        .collection('bookings')
+        .doc(bookingId);
+
+    final bookingDoc = await bookingRef.get();
+    if (!bookingDoc.exists) {
+      throw Exception('Booking not found');
+    }
+
+    final booking = Booking.fromFirestore(bookingDoc.id, bookingDoc.data()!);
+
+    // Encontrar la solicitud
+    final request = booking.joinRequests.firstWhere(
+      (r) => r['userId'] == requestUserId,
+      orElse: () => throw Exception('Join request not found'),
+    );
+
+    // Remover solicitud y añadir a sharedWith
+    await bookingRef.update({
+      'joinRequests': FieldValue.arrayRemove([request]),
+      'sharedWith': FieldValue.arrayUnion([requestUserId]),
+    });
+  }
+
+  /// Rechazar solicitud de unión
+  Future<void> rejectJoinRequest({
+    required String clubId,
+    required String courtId,
+    required String bookingId,
+    required String requestUserId,
+  }) async {
+    final bookingRef = _firestore
+        .collection('clubs')
+        .doc(clubId)
+        .collection('courts')
+        .doc(courtId)
+        .collection('bookings')
+        .doc(bookingId);
+
+    final bookingDoc = await bookingRef.get();
+    if (!bookingDoc.exists) {
+      throw Exception('Booking not found');
+    }
+
+    final booking = Booking.fromFirestore(bookingDoc.id, bookingDoc.data()!);
+
+    // Encontrar la solicitud
+    final request = booking.joinRequests.firstWhere(
+      (r) => r['userId'] == requestUserId,
+      orElse: () => throw Exception('Join request not found'),
+    );
+
+    // Remover solicitud
+    await bookingRef.update({
+      'joinRequests': FieldValue.arrayRemove([request]),
+    });
+  }
+
+  /// Remover usuario compartido
+  Future<void> removeSharedUser({
+    required String clubId,
+    required String courtId,
+    required String bookingId,
+    required String userId,
+  }) async {
+    await _firestore
+        .collection('clubs')
+        .doc(clubId)
+        .collection('courts')
+        .doc(courtId)
+        .collection('bookings')
+        .doc(bookingId)
+        .update({
+          'sharedWith': FieldValue.arrayRemove([userId]),
+        });
+  }
+
+  /// Activar/desactivar compartir
+  Future<void> toggleSharingEnabled({
+    required String clubId,
+    required String courtId,
+    required String bookingId,
+    required bool enabled,
+  }) async {
+    await _firestore
+        .collection('clubs')
+        .doc(clubId)
+        .collection('courts')
+        .doc(courtId)
+        .collection('bookings')
+        .doc(bookingId)
+        .update({'sharingEnabled': enabled});
+  }
+
+  /// Obtener reservas compartibles en una fecha
+  Future<List<Booking>> getShareableBookings({
+    required String clubId,
+    required List<Court> courts,
+    required String date,
+  }) async {
+    final List<Booking> shareableBookings = [];
+
+    for (final court in courts) {
+      final bookingsSnapshot = await _firestore
+          .collection('clubs')
+          .doc(clubId)
+          .collection('courts')
+          .doc(court.id)
+          .collection('bookings')
+          .where('date', isEqualTo: date)
+          .where('status', isEqualTo: 'active')
+          .where('sharingEnabled', isEqualTo: true)
+          .get();
+
+      final bookings = bookingsSnapshot.docs
+          .map((doc) => Booking.fromFirestore(doc.id, doc.data()))
+          .where((booking) => booking.hasAvailableSlots && booking.isUpcoming)
+          .toList();
+
+      shareableBookings.addAll(bookings);
+    }
+
+    // Ordenar por hora de inicio
+    shareableBookings.sort((a, b) => a.startTime.compareTo(b.startTime));
+    return shareableBookings;
   }
 
   // Helpers para conversión de tiempo
