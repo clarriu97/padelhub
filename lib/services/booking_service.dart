@@ -168,13 +168,13 @@ class BookingService {
 
   /// Obtener reservas futuras del usuario
   Future<List<Booking>> getUserUpcomingBookings(String userId) async {
-    final allBookings = await getUserBookings(userId);
+    final allBookings = await getUserAccessibleBookings(userId);
     return allBookings.where((booking) => booking.isUpcoming).toList();
   }
 
   /// Obtener reservas pasadas del usuario
   Future<List<Booking>> getUserPastBookings(String userId) async {
-    final allBookings = await getUserBookings(userId);
+    final allBookings = await getUserAccessibleBookings(userId);
     final pastBookings = allBookings
         .where((booking) => booking.isPast)
         .toList();
