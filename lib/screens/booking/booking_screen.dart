@@ -236,7 +236,7 @@ class _BookingScreenState extends State<BookingScreen> {
       color: AppColors.surface,
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: SizedBox(
-        height: 80,
+        height: 70,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -259,7 +259,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 _loadBookingsAndSlots();
               },
               child: Container(
-                width: 60,
+                width: 50,
                 margin: const EdgeInsets.only(right: 12),
                 decoration: BoxDecoration(
                   color: isSelected ? AppColors.primary : AppColors.background,
@@ -276,7 +276,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     Text(
                       DateFormat('EEE').format(date).toUpperCase(),
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: isSelected
                             ? AppColors.onPrimary
@@ -287,7 +287,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     Text(
                       DateFormat('d').format(date),
                       style: TextStyle(
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: isSelected
                             ? AppColors.onPrimary
@@ -313,7 +313,7 @@ class _BookingScreenState extends State<BookingScreen> {
           Text(
             'Show available slots only',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w500,
             ),
@@ -348,8 +348,8 @@ class _BookingScreenState extends State<BookingScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
+        spacing: 5,
+        runSpacing: 5,
         children: slots.map((slot) {
           final isSelected = _selectedTimeSlot?.startTime == slot.startTime;
 
@@ -373,8 +373,8 @@ class _BookingScreenState extends State<BookingScreen> {
                   }
                 : null,
             child: Container(
-              width: (MediaQuery.of(context).size.width - 56) / 3,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              width: (MediaQuery.of(context).size.width - 32 - 20) / 5,
+              padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primary
@@ -393,7 +393,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 slot.startTime,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 13,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   color: isSelected
                       ? AppColors.onPrimary
@@ -436,7 +436,7 @@ class _BookingScreenState extends State<BookingScreen> {
               Text(
                 'Available courts at ${_selectedTimeSlot!.startTime}',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
@@ -458,7 +458,7 @@ class _BookingScreenState extends State<BookingScreen> {
             },
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primary.withValues(alpha: 0.1)
@@ -474,7 +474,7 @@ class _BookingScreenState extends State<BookingScreen> {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -482,10 +482,10 @@ class _BookingScreenState extends State<BookingScreen> {
                     child: Icon(
                       Icons.sports_tennis,
                       color: AppColors.primary,
-                      size: 24,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,7 +493,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         Text(
                           courtAvailability.court.name,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
                           ),
@@ -502,7 +502,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         Text(
                           '${courtAvailability.court.indoor ? 'Indoor' : 'Outdoor'} | ${courtAvailability.court.surface}',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                         ),
@@ -531,14 +531,14 @@ class _BookingScreenState extends State<BookingScreen> {
       margin: const EdgeInsets.all(16),
       color: AppColors.surface,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Select duration:',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
@@ -560,7 +560,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     },
                     child: Container(
                       margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         gradient: isSelected
                             ? LinearGradient(
@@ -583,7 +583,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           Text(
                             '${price.toStringAsFixed(2)} €',
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: isSelected
                                   ? AppColors.onPrimary
@@ -594,7 +594,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           Text(
                             '$duration min',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               color: isSelected
                                   ? AppColors.onPrimary
                                   : AppColors.textSecondary,
