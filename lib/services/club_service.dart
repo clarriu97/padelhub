@@ -2,7 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:padelhub/models/club.dart';
 
 class ClubService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  ClubService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   // Obtener todos los clubs
   Stream<List<Club>> getClubs() {
@@ -14,6 +17,16 @@ class ClubService {
               .map((doc) => Club.fromFirestore(doc.id, doc.data()))
               .toList(),
         );
+  }
+
+  // Obtener el club por defecto (el primero que encuentre)
+  Future<Club?> getDefaultClub() async {
+    final snapshot = await _firestore.collection('clubs').limit(1).get();
+    if (snapshot.docs.isEmpty) return null;
+    return Club.fromFirestore(
+      snapshot.docs.first.id,
+      snapshot.docs.first.data(),
+    );
   }
 
   // Crear un nuevo club

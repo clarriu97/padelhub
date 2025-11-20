@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:padelhub/colors.dart';
-import 'package:padelhub/screens/booking/booking_screen.dart';
+import 'package:padelhub/screens/home/club_main_screen.dart';
 import 'package:padelhub/screens/booking/user_bookings_screen.dart';
 import 'package:padelhub/screens/home/profile_screen.dart';
 import 'package:padelhub/screens/admin/clubs_admin_screen.dart';
@@ -44,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Widget> get _screens => [
-    const BookingScreen(),
+    const ClubMainScreen(),
     const UserBookingsScreen(),
     if (_isAdmin) const ClubsAdminScreen(),
     const ProfileScreen(),

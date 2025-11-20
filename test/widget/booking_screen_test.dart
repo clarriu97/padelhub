@@ -4,22 +4,10 @@ import 'package:mockito/mockito.dart';
 import 'package:padelhub/screens/booking/booking_screen.dart';
 import 'package:padelhub/models/club.dart';
 import 'package:padelhub/models/court.dart';
-import 'package:padelhub/services/club_service.dart';
 import 'package:padelhub/services/court_service.dart';
 import 'package:padelhub/services/booking_service.dart';
 
 // Mocks
-class MockClubService extends Mock implements ClubService {
-  @override
-  Stream<List<Club>> getClubs() {
-    return super.noSuchMethod(
-      Invocation.method(#getClubs, []),
-      returnValue: Stream.value(<Club>[]),
-      returnValueForMissingStub: Stream.value(<Club>[]),
-    );
-  }
-}
-
 class MockCourtService extends Mock implements CourtService {
   @override
   Stream<List<Court>> getCourts(String? clubId) {
@@ -34,12 +22,10 @@ class MockCourtService extends Mock implements CourtService {
 class MockBookingService extends Mock implements BookingService {}
 
 void main() {
-  late MockClubService mockClubService;
   late MockCourtService mockCourtService;
   late MockBookingService mockBookingService;
 
   setUp(() {
-    mockClubService = MockClubService();
     mockCourtService = MockCourtService();
     mockBookingService = MockBookingService();
   });
@@ -58,25 +44,23 @@ void main() {
     );
 
     // Stub service calls
-    when(mockClubService.getClubs()).thenAnswer((_) => Stream.value([club]));
     when(mockCourtService.getCourts(any)).thenAnswer((_) => Stream.value([]));
 
     await tester.pumpWidget(
       MaterialApp(
-        home: BookingScreen(
-          clubService: mockClubService,
-          courtService: mockCourtService,
-          bookingService: mockBookingService,
+        home: Scaffold(
+          body: BookingScreen(
+            club: club,
+            courtService: mockCourtService,
+            bookingService: mockBookingService,
+          ),
         ),
       ),
     );
 
-    await tester.pumpAndSettle(); // Wait for stream to emit
+    await tester.pump(); // Initial frame
 
-    expect(
-      find.text('Test Club'),
-      findsWidgets,
-    ); // Should be in dropdown and title
-    expect(find.text('Select Club'), findsOneWidget);
+    // Should have date selector
+    expect(find.byType(ListView), findsAtLeastNWidgets(1));
   });
 }

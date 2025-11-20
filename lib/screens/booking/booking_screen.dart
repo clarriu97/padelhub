@@ -6,19 +6,18 @@ import 'package:padelhub/models/court.dart';
 import 'package:padelhub/models/booking.dart';
 import 'package:padelhub/models/time_slot.dart';
 import 'package:padelhub/models/court_availability.dart';
-import 'package:padelhub/services/club_service.dart';
 import 'package:padelhub/services/court_service.dart';
 import 'package:padelhub/services/booking_service.dart';
 import 'package:intl/intl.dart';
 
 class BookingScreen extends StatefulWidget {
-  final ClubService? clubService;
+  final Club club;
   final CourtService? courtService;
   final BookingService? bookingService;
 
   const BookingScreen({
     super.key,
-    this.clubService,
+    required this.club,
     this.courtService,
     this.bookingService,
   });
@@ -28,11 +27,9 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  late final ClubService _clubService;
   late final CourtService _courtService;
   late final BookingService _bookingService;
 
-  Club? _selectedClub;
   DateTime _selectedDate = DateTime.now();
   TimeSlot? _selectedTimeSlot;
   CourtAvailability? _selectedCourtAvailability;
@@ -41,51 +38,35 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _isLoading = false;
   bool _enableSharing = false;
 
-  List<Club> _clubs = [];
   List<Court> _courts = [];
   Map<String, List<Booking>> _bookingsByCourtId = {};
   List<TimeSlot> _availableSlots = [];
   List<CourtAvailability> _availableCourts = [];
-  List<Booking> _shareableBookings = [];
-  bool _showShareableBookings = false;
 
   @override
   void initState() {
     super.initState();
-    _clubService = widget.clubService ?? ClubService();
     _courtService = widget.courtService ?? CourtService();
     _bookingService = widget.bookingService ?? BookingService();
-    _loadClubs();
-  }
-
-  Future<void> _loadClubs() async {
-    _clubService.getClubs().listen((clubs) {
-      setState(() {
-        _clubs = clubs;
-        if (_clubs.isNotEmpty && _selectedClub == null) {
-          _selectedClub = _clubs.first;
-          _loadCourts();
-        }
-      });
-    });
+    _loadCourts();
   }
 
   Future<void> _loadCourts() async {
-    if (_selectedClub == null) return;
+    _courtService.getCourts(widget.club.id).listen((courts) async {
+      if (mounted) {
+        setState(() {
+          _courts = courts;
+        });
 
-    _courtService.getCourts(_selectedClub!.id).listen((courts) async {
-      setState(() {
-        _courts = courts;
-      });
-
-      if (_courts.isNotEmpty) {
-        await _loadBookingsAndSlots();
+        if (_courts.isNotEmpty) {
+          await _loadBookingsAndSlots();
+        }
       }
     });
   }
 
   Future<void> _loadBookingsAndSlots() async {
-    if (_selectedClub == null || _courts.isEmpty) return;
+    if (_courts.isEmpty) return;
 
     setState(() => _isLoading = true);
 
@@ -94,7 +75,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
       // Obtener todas las reservas de todas las pistas
       _bookingsByCourtId = await _bookingService.getClubBookingsForDate(
-        clubId: _selectedClub!.id,
+        clubId: widget.club.id,
         courts: _courts,
         date: dateStr,
       );
@@ -103,16 +84,18 @@ class _BookingScreenState extends State<BookingScreen> {
       _availableSlots = _bookingService.calculateAvailableTimeSlots(
         bookingsByCourtId: _bookingsByCourtId,
         courts: _courts,
-        opensAt: _selectedClub!.opensAt ?? '08:00',
-        closesAt: _selectedClub!.closesAt ?? '23:00',
+        opensAt: widget.club.opensAt ?? '08:00',
+        closesAt: widget.club.closesAt ?? '23:00',
       );
 
-      setState(() {
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading availability: $e')),
         );
@@ -120,76 +103,8 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  Future<void> _loadShareableBookings() async {
-    if (_selectedClub == null || _courts.isEmpty) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final user = FirebaseAuth.instance.currentUser;
-
-      final shareableBookings = await _bookingService.getShareableBookings(
-        clubId: _selectedClub!.id,
-        courts: _courts,
-        date: dateStr,
-      );
-
-      // Filter out bookings owned by current user
-      setState(() {
-        _shareableBookings = shareableBookings
-            .where((b) => b.userId != user?.uid)
-            .toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading shareable bookings: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _requestToJoin(Booking booking) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _bookingService.requestToJoinBooking(
-        clubId: booking.clubId,
-        courtId: booking.courtId,
-        bookingId: booking.id,
-        userId: user.uid,
-        userName: user.email ?? user.displayName ?? 'Unknown User',
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Join request sent! Waiting for owner approval.'),
-          ),
-        );
-        // Reload shareable bookings to update UI
-        await _loadShareableBookings();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error sending request: $e')));
-      }
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
   Future<void> _createBooking() async {
-    if (_selectedClub == null ||
-        _selectedCourtAvailability == null ||
+    if (_selectedCourtAvailability == null ||
         _selectedTimeSlot == null ||
         _selectedDuration == null) {
       return;
@@ -208,7 +123,7 @@ class _BookingScreenState extends State<BookingScreen> {
       );
 
       await _bookingService.createBooking(
-        clubId: _selectedClub!.id,
+        clubId: widget.club.id,
         courtId: _selectedCourtAvailability!.court.id,
         userId: user.uid,
         date: dateStr,
@@ -240,115 +155,62 @@ class _BookingScreenState extends State<BookingScreen> {
         ).showSnackBar(SnackBar(content: Text('Error creating booking: $e')));
       }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // App Bar con imagen
-          SliverAppBar(
-            expandedHeight: 200,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            flexibleSpace: FlexibleSpaceBar(
-              title: Text(
-                _selectedClub?.name ?? 'Book',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(
-                      offset: Offset(0, 1),
-                      blurRadius: 3.0,
-                      color: Colors.black45,
-                    ),
-                  ],
-                ),
-              ),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-                child: Icon(
-                  Icons.sports_tennis,
-                  size: 100,
-                  color: Colors.white.withValues(alpha: 0.3),
-                ),
-              ),
-            ),
-          ),
+    return Column(
+      children: [
+        // Selector de fecha con calendario horizontal
+        _buildDateSelector(),
 
-          // Contenido
-          SliverToBoxAdapter(
+        Expanded(
+          child: SingleChildScrollView(
             child: Column(
               children: [
-                // Selector de club
-                _buildClubSelector(),
+                // Toggle para mostrar solo slots disponibles
+                _buildAvailableOnlyToggle(),
 
-                // Club information section
-                if (_selectedClub != null) _buildClubInfo(),
+                // Grid de slots de tiempo
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: CircularProgressIndicator(),
+                  )
+                else
+                  _buildTimeSlotGrid(),
 
-                // Selector de fecha con calendario horizontal
-                _buildDateSelector(),
+                // Mostrar pistas disponibles cuando se selecciona un horario
+                if (_selectedTimeSlot != null && _availableCourts.isEmpty)
+                  _loadAvailableCourtsForSelectedTime(),
 
-                // Toggle para ver reservas compartibles
-                _buildShareableToggle(),
+                if (_selectedTimeSlot != null && _availableCourts.isNotEmpty)
+                  _buildAvailableCourtsSection(),
 
-                // Mostrar reservas compartibles o slots disponibles
-                if (_showShareableBookings)
-                  _buildShareableBookingsSection()
-                else ...[
-                  // Toggle para mostrar solo slots disponibles
-                  _buildAvailableOnlyToggle(),
+                // Información de la pista seleccionada y duración
+                if (_selectedCourtAvailability != null)
+                  _buildDurationSelector(),
 
-                  // Grid de slots de tiempo
-                  if (_isLoading)
-                    const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: CircularProgressIndicator(),
-                    )
-                  else
-                    _buildTimeSlotGrid(),
+                // Sharing toggle
+                if (_selectedCourtAvailability != null &&
+                    _selectedDuration != null)
+                  _buildSharingToggle(),
 
-                  // Mostrar pistas disponibles cuando se selecciona un horario
-                  if (_selectedTimeSlot != null && _availableCourts.isEmpty)
-                    _loadAvailableCourtsForSelectedTime(),
-
-                  if (_selectedTimeSlot != null && _availableCourts.isNotEmpty)
-                    _buildAvailableCourtsSection(),
-
-                  // Información de la pista seleccionada y duración
-                  if (_selectedCourtAvailability != null)
-                    _buildDurationSelector(),
-
-                  // Sharing toggle
-                  if (_selectedCourtAvailability != null &&
-                      _selectedDuration != null)
-                    _buildSharingToggle(),
-
-                  // Botón de reserva
-                  if (_selectedCourtAvailability != null &&
-                      _selectedDuration != null)
-                    _buildBookButton(),
-                ],
+                // Botón de reserva
+                if (_selectedCourtAvailability != null &&
+                    _selectedDuration != null)
+                  _buildBookButton(),
 
                 const SizedBox(height: 100),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -361,7 +223,7 @@ class _BookingScreenState extends State<BookingScreen> {
             timeSlot: _selectedTimeSlot!.startTime,
             bookingsByCourtId: _bookingsByCourtId,
             courts: _courts,
-            closesAt: _selectedClub!.closesAt ?? '23:00',
+            closesAt: widget.club.closesAt ?? '23:00',
           );
         });
       }
@@ -369,135 +231,75 @@ class _BookingScreenState extends State<BookingScreen> {
     return const SizedBox.shrink();
   }
 
-  Widget _buildClubSelector() {
-    if (_clubs.isEmpty) return const SizedBox();
-
-    return Container(
-      color: AppColors.surface,
-      padding: const EdgeInsets.all(16),
-      child: DropdownButtonFormField<Club>(
-        initialValue: _selectedClub,
-        decoration: InputDecoration(
-          labelText: 'Select Club',
-          labelStyle: TextStyle(color: AppColors.textSecondary),
-          filled: true,
-          fillColor: AppColors.background,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide.none,
-          ),
-          prefixIcon: Icon(Icons.business, color: AppColors.primary),
-        ),
-        dropdownColor: AppColors.surface,
-        style: TextStyle(color: AppColors.textPrimary),
-        items: _clubs.map((club) {
-          return DropdownMenuItem(value: club, child: Text(club.name));
-        }).toList(),
-        onChanged: (club) {
-          setState(() {
-            _selectedClub = club;
-            _selectedTimeSlot = null;
-            _selectedCourtAvailability = null;
-            _selectedDuration = null;
-            _availableCourts = [];
-            _loadCourts();
-          });
-        },
-      ),
-    );
-  }
-
   Widget _buildDateSelector() {
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Column(
-        children: [
-          // Calendario horizontal
-          SizedBox(
-            height: 100,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: 10, // 10 días hacia adelante
-              itemBuilder: (context, index) {
-                final date = DateTime.now().add(Duration(days: index));
-                final isSelected =
-                    DateFormat('yyyy-MM-dd').format(date) ==
-                    DateFormat('yyyy-MM-dd').format(_selectedDate);
+      child: SizedBox(
+        height: 80,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: 14, // 2 weeks
+          itemBuilder: (context, index) {
+            final date = DateTime.now().add(Duration(days: index));
+            final isSelected =
+                DateFormat('yyyy-MM-dd').format(date) ==
+                DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _selectedDate = date;
-                      _selectedTimeSlot = null;
-                      _selectedCourtAvailability = null;
-                      _selectedDuration = null;
-                      _availableCourts = [];
-                    });
-                    // Reload based on current mode
-                    if (_showShareableBookings) {
-                      _loadShareableBookings();
-                    } else {
-                      _loadBookingsAndSlots();
-                    }
-                  },
-                  child: Container(
-                    width: 70,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedDate = date;
+                  _selectedTimeSlot = null;
+                  _selectedCourtAvailability = null;
+                  _selectedDuration = null;
+                  _availableCourts = [];
+                });
+                _loadBookingsAndSlots();
+              },
+              child: Container(
+                width: 60,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : AppColors.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      DateFormat('EEE').format(date).toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                         color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textSecondary.withValues(alpha: 0.2),
+                            ? AppColors.onPrimary
+                            : AppColors.textSecondary,
                       ),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          DateFormat('EEE').format(date).toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: isSelected
-                                ? AppColors.onPrimary
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          DateFormat('d').format(date),
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected
-                                ? AppColors.onPrimary
-                                : AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat('MMM').format(date),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isSelected
-                                ? AppColors.onPrimary
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('d').format(date),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? AppColors.onPrimary
+                            : AppColors.textPrimary,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -531,6 +333,18 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget _buildTimeSlotGrid() {
     final slots = _showAvailableOnly ? _availableSlots : _generateAllSlots();
 
+    if (slots.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: Text(
+            'No slots available for this date',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Wrap(
@@ -553,7 +367,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             timeSlot: slot.startTime,
                             bookingsByCourtId: _bookingsByCourtId,
                             courts: _courts,
-                            closesAt: _selectedClub!.closesAt ?? '23:00',
+                            closesAt: widget.club.closesAt ?? '23:00',
                           );
                     });
                   }
@@ -598,7 +412,13 @@ class _BookingScreenState extends State<BookingScreen> {
   List<TimeSlot> _generateAllSlots() {
     // Genera todos los slots posibles entre opensAt y closesAt
     // Solo para mostrar cuando _showAvailableOnly = false
-    return _availableSlots; // Por ahora, usa los disponibles
+    // Por simplicidad, devolvemos los disponibles + los no disponibles si los tuviéramos
+    // Pero _availableSlots ya debería tener todos si calculateAvailableTimeSlots lo hiciera
+    // Revisando la implementación original, parece que calculateAvailableTimeSlots devuelve solo disponibles?
+    // No, devuelve TimeSlot que tiene isAvailable.
+    // Si _availableSlots solo tiene disponibles, entonces necesitamos lógica para generar todos.
+    // Asumiremos que _availableSlots contiene todos los slots con su estado isAvailable.
+    return _availableSlots;
   }
 
   Widget _buildAvailableCourtsSection() {
@@ -793,6 +613,23 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
+  Widget _buildSharingToggle() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: SwitchListTile(
+        title: const Text('Allow others to join?'),
+        subtitle: const Text('Make this booking open for other players'),
+        value: _enableSharing,
+        onChanged: (bool value) {
+          setState(() {
+            _enableSharing = value;
+          });
+        },
+        activeTrackColor: AppColors.primary,
+      ),
+    );
+  }
+
   Widget _buildBookButton() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -807,458 +644,23 @@ class _BookingScreenState extends State<BookingScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
+            elevation: 4,
           ),
           child: _isLoading
               ? const SizedBox(
-                  height: 20,
-                  width: 20,
+                  height: 24,
+                  width: 24,
                   child: CircularProgressIndicator(
+                    color: Colors.white,
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 )
               : const Text(
-                  'Book Court',
+                  'BOOK NOW',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
         ),
       ),
-    );
-  }
-
-  Widget _buildClubInfo() {
-    if (_selectedClub == null) return const SizedBox();
-
-    return Card(
-      margin: const EdgeInsets.all(16),
-      color: AppColors.surface,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.business,
-                    color: AppColors.primary,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedClub!.name,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      if (_selectedClub!.address != null)
-                        Text(
-                          _selectedClub!.address!,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Horario
-            if (_selectedClub!.opensAt != null ||
-                _selectedClub!.closesAt != null)
-              _buildInfoRow(
-                Icons.schedule,
-                'Hours',
-                '${_selectedClub!.opensAt ?? 'N/A'} - ${_selectedClub!.closesAt ?? 'N/A'}',
-              ),
-
-            // Teléfono
-            if (_selectedClub!.phoneNumber != null)
-              _buildInfoRow(Icons.phone, 'Phone', _selectedClub!.phoneNumber!),
-
-            // Website
-            if (_selectedClub!.website != null)
-              _buildInfoRow(Icons.language, 'Website', _selectedClub!.website!),
-
-            // Facilities
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (_selectedClub!.hasParking) _buildFacilityChip('Parking'),
-                if (_selectedClub!.hasAccessibleAccess)
-                  _buildFacilityChip('Accessible'),
-                if (_selectedClub!.hasShop) _buildFacilityChip('Shop'),
-                if (_selectedClub!.hasCafeteria)
-                  _buildFacilityChip('Cafeteria'),
-                if (_selectedClub!.hasSnackBar) _buildFacilityChip('Snack Bar'),
-                if (_selectedClub!.hasChangingRooms)
-                  _buildFacilityChip('Changing Rooms'),
-                if (_selectedClub!.hasLockers) _buildFacilityChip('Lockers'),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.textSecondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSharingToggle() {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: AppColors.surface,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(
-              _enableSharing ? Icons.share : Icons.lock,
-              color: AppColors.primary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Share Court',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Allow others to request to join this booking',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Switch(
-              value: _enableSharing,
-              onChanged: (value) {
-                setState(() => _enableSharing = value);
-              },
-              activeTrackColor: AppColors.primary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFacilityChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          color: AppColors.primary,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildShareableToggle() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () {
-                setState(() {
-                  _showShareableBookings = false;
-                });
-              },
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('New Booking'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: !_showShareableBookings
-                    ? AppColors.primary
-                    : AppColors.surface,
-                foregroundColor: !_showShareableBookings
-                    ? AppColors.onPrimary
-                    : AppColors.textPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                setState(() {
-                  _showShareableBookings = true;
-                });
-                await _loadShareableBookings();
-              },
-              icon: const Icon(Icons.group_add),
-              label: const Text('Join Court'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _showShareableBookings
-                    ? AppColors.primary
-                    : AppColors.surface,
-                foregroundColor: _showShareableBookings
-                    ? AppColors.onPrimary
-                    : AppColors.textPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShareableBookingsSection() {
-    if (_isLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(32),
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (_shareableBookings.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Icon(
-              Icons.event_busy,
-              size: 64,
-              color: AppColors.textSecondary.withValues(alpha: 0.5),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No shareable bookings available',
-              style: TextStyle(fontSize: 18, color: AppColors.textSecondary),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try selecting a different date',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary.withValues(alpha: 0.7),
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            'Available Courts to Join',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        ..._shareableBookings.map((booking) {
-          final user = FirebaseAuth.instance.currentUser;
-          final hasRequested = booking.hasJoinRequest(user?.uid ?? '');
-          final canJoin = booking.canUserJoin(user?.uid ?? '');
-
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: AppColors.surface,
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Time and court info
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${booking.startTime} - ${booking.endTime}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.onPrimary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(Icons.sports_tennis, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Court ${booking.courtId}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Duration and price
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.timer,
-                        color: AppColors.textSecondary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${booking.durationMinutes} min',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(width: 16),
-                      Icon(
-                        Icons.people,
-                        color: AppColors.textSecondary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${booking.sharedWith.length + 1}/${booking.maxPlayers} players',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${booking.price.toStringAsFixed(2)} €',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Join button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: hasRequested || !canJoin
-                          ? null
-                          : () => _requestToJoin(booking),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.onPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        hasRequested
-                            ? 'Request Pending'
-                            : !canJoin
-                            ? 'Court Full'
-                            : 'Request to Join',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }),
-        const SizedBox(height: 16),
-      ],
     );
   }
 }

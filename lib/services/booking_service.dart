@@ -5,7 +5,10 @@ import 'package:padelhub/models/court.dart';
 import 'package:padelhub/models/court_availability.dart';
 
 class BookingService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  BookingService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Obtener todas las reservas activas de una pista en una fecha específica
   Stream<List<Booking>> getCourtBookings({
