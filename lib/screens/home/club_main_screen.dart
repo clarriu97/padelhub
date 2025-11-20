@@ -5,6 +5,7 @@ import 'package:padelhub/screens/booking/booking_screen.dart';
 import 'package:padelhub/screens/home/club_info_screen.dart';
 import 'package:padelhub/screens/home/open_matches_screen.dart';
 import 'package:padelhub/services/club_service.dart';
+import 'package:padelhub/services/remote_config_service.dart';
 
 class ClubMainScreen extends StatefulWidget {
   const ClubMainScreen({super.key});
@@ -35,7 +36,11 @@ class _ClubMainScreenState extends State<ClubMainScreen>
 
   Future<void> _loadClub() async {
     try {
-      final club = await _clubService.getDefaultClub();
+      // Get the default club ID from Remote Config
+      final clubId = RemoteConfigService.getDefaultClubId();
+
+      // Load the club (will use clubId if provided, otherwise first club)
+      final club = await _clubService.getDefaultClub(clubId: clubId);
       if (mounted) {
         setState(() {
           _club = club;

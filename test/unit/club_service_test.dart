@@ -38,6 +38,50 @@ void main() {
       expect(club.timezone, 'Europe/Madrid');
     });
 
+    test(
+      'getDefaultClub returns specific club when clubId is provided',
+      () async {
+        // Arrange
+        await fakeFirestore.collection('clubs').doc('club1').set({
+          'name': 'Test Club 1',
+          'timezone': 'Europe/Madrid',
+        });
+
+        await fakeFirestore.collection('clubs').doc('club2').set({
+          'name': 'Test Club 2',
+          'timezone': 'Europe/London',
+        });
+
+        // Act
+        final club = await clubService.getDefaultClub(clubId: 'club2');
+
+        // Assert
+        expect(club, isNotNull);
+        expect(club!.id, 'club2');
+        expect(club.name, 'Test Club 2');
+        expect(club.timezone, 'Europe/London');
+      },
+    );
+
+    test(
+      'getDefaultClub falls back to first club when clubId does not exist',
+      () async {
+        // Arrange
+        await fakeFirestore.collection('clubs').doc('club1').set({
+          'name': 'Test Club 1',
+          'timezone': 'Europe/Madrid',
+        });
+
+        // Act
+        final club = await clubService.getDefaultClub(clubId: 'non-existent');
+
+        // Assert
+        expect(club, isNotNull);
+        expect(club!.id, 'club1');
+        expect(club.name, 'Test Club 1');
+      },
+    );
+
     test('getDefaultClub returns null when no clubs exist', () async {
       // Act
       final club = await clubService.getDefaultClub();

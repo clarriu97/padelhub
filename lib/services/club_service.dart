@@ -19,8 +19,23 @@ class ClubService {
         );
   }
 
-  // Obtener el club por defecto (el primero que encuentre)
-  Future<Club?> getDefaultClub() async {
+  // Obtener el club por defecto
+  // Si se proporciona un clubId, intenta obtener ese club específico
+  // Si no se encuentra o no se proporciona, obtiene el primero que encuentre
+  Future<Club?> getDefaultClub({String? clubId}) async {
+    // Si se proporciona un clubId, intentar obtener ese club específico
+    if (clubId != null && clubId.isNotEmpty) {
+      try {
+        final doc = await _firestore.collection('clubs').doc(clubId).get();
+        if (doc.exists) {
+          return Club.fromFirestore(doc.id, doc.data()!);
+        }
+      } catch (e) {
+        // Si falla, continuar con el comportamiento por defecto
+      }
+    }
+
+    // Comportamiento por defecto: obtener el primer club
     final snapshot = await _firestore.collection('clubs').limit(1).get();
     if (snapshot.docs.isEmpty) return null;
     return Club.fromFirestore(

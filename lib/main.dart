@@ -5,10 +5,12 @@ import 'package:padelhub/firebase_options.dart';
 import 'package:padelhub/screens/auth/login_screen.dart';
 import 'package:padelhub/screens/home/home_screen.dart';
 import 'package:padelhub/colors.dart';
+import 'package:padelhub/services/remote_config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await RemoteConfigService.initialize();
   runApp(const MainApp());
 }
 
